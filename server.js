@@ -16,10 +16,10 @@ app.use(express.static('public'));
 // ====== Хранилище данных ======
 const DATA_FILE = path.join(__dirname, 'data.json');
 let data = {
-  users: {},        // { username: { passwordHash, friends: [], groups: [] } }
+  users: {},
   messages: { general: [] },
   groups: {},
-  sessions: {}      // token -> username (срок 7 дней)
+  sessions: {}
 };
 
 if (fs.existsSync(DATA_FILE)) {
@@ -35,16 +35,11 @@ function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// ====== Хелперы ======
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-function getUserByToken(token) {
-  return data.sessions[token] ? data.users[data.sessions[token]] : null;
-}
-
-// ====== API регистрации / входа ======
+// ====== API РЕГИСТРАЦИИ / ВХОДА ======
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -63,28 +58,24 @@ app.post('/api/register', (req, res) => {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
-
   const user = data.users[username];
   if (!user) return res.status(401).json({ error: 'Неверный ник или пароль' });
-
-  const valid = bcrypt.compareSync(password, user.passwordHash);
-  if (!valid) return res.status(401).json({ error: 'Неверный ник или пароль' });
-
+  if (!bcrypt.compareSync(password, user.passwordHash)) {
+    return res.status(401).json({ error: 'Неверный ник или пароль' });
+  }
   const token = generateToken();
   data.sessions[token] = username;
   saveData();
   res.json({ token, username });
 });
 
-// Проверка сессии
 app.get('/api/me', (req, res) => {
   const token = req.headers.authorization;
   if (!token || !data.sessions[token]) return res.status(401).json({ error: 'Не авторизован' });
-  const username = data.sessions[token];
-  res.json({ username });
+  res.json({ username: data.sessions[token] });
 });
 
-// ====== AI-друг (встроенные ответы) ======
+// ====== AI-ДРУГ ======
 const aiReplies = {
   "привет": ["Привет! Как у тебя дела?", "Приветик!", "Здравствуй!"],
   "как дела": ["У меня всё отлично! А у тебя?", "Супер!", "Хорошо, спасибо что спросил."],
@@ -100,7 +91,7 @@ const randomPhrases = [
 function getAIReply(userText) {
   const clean = userText.trim().toLowerCase().replace(/[^а-яёa-z0-9 ]/g, '');
   for (let key in aiReplies) {
-    if (clean.indexOf(key) !== -1) {
+    if (clean.includes(key)) {
       const answers = aiReplies[key];
       return answers[Math.floor(Math.random() * answers.length)];
     }
@@ -108,18 +99,22 @@ function getAIReply(userText) {
   return randomPhrases[Math.floor(Math.random() * randomPhrases.length)];
 }
 
-// ====== Пользователи онлайн ======
+// ====== ПОЛЬЗОВАТЕЛИ ОНЛАЙН ======
 const onlineUsers = new Map(); // socket.id -> username
 const userSockets = new Map(); // username -> socket.id
 
 io.on('connection', (socket) => {
   console.log('Подключился:', socket.id);
 
-  // Идентификация (после входа или проверки сессии)
   socket.on('register', (username) => {
     if (!username || !data.users[username]) return;
     onlineUsers.set(socket.id, username);
     userSockets.set(username, socket.id);
+    socket.emit('user-data', {
+      name: username,
+      friends: data.users[username].friends || [],
+      groups: getGroupsForUser(username)
+    });
     broadcastUsersList();
   });
 
@@ -130,7 +125,7 @@ io.on('connection', (socket) => {
     broadcastUsersList();
   });
 
-  // ====== Чат ======
+  // ====== СООБЩЕНИЯ ======
   socket.on('chat message', (msgData) => {
     const sender = onlineUsers.get(socket.id);
     if (!sender) return;
@@ -194,10 +189,78 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ====== Друзья и группы (как раньше) ======
-  // ... оставил без изменений для краткости, они будут как в предыдущей версии
+  // ====== ДРУЗЬЯ И ГРУППЫ ======
+  socket.on('add-friend', (friendName) => {
+    const myName = onlineUsers.get(socket.id);
+    if (!myName || !data.users[friendName]) return;
+    if (!data.users[myName].friends.includes(friendName)) {
+      data.users[myName].friends.push(friendName);
+      saveData();
+      socket.emit('user-data', {
+        name: myName,
+        friends: data.users[myName].friends,
+        groups: getGroupsForUser(myName)
+      });
+    }
+  });
+
+  socket.on('remove-friend', (friendName) => {
+    const myName = onlineUsers.get(socket.id);
+    if (!myName) return;
+    data.users[myName].friends = data.users[myName].friends.filter(f => f !== friendName);
+    saveData();
+    socket.emit('user-data', {
+      name: myName,
+      friends: data.users[myName].friends,
+      groups: getGroupsForUser(myName)
+    });
+  });
+
+  socket.on('create-group', (groupData) => {
+    const { name, members } = groupData;
+    if (!name || data.groups[name]) return;
+    if (!members || members.length < 1) return;
+    const myName = onlineUsers.get(socket.id);
+    const allMembers = [myName, ...members.filter(m => m !== myName)];
+    data.groups[name] = { members: allMembers, messages: [] };
+    saveData();
+    allMembers.forEach(member => {
+      const sockId = userSockets.get(member);
+      if (sockId) {
+        io.to(sockId).emit('user-data', {
+          name: member,
+          friends: data.users[member]?.friends || [],
+          groups: getGroupsForUser(member)
+        });
+      }
+    });
+  });
+
+  socket.on('change-name', (newName) => {
+    const oldName = onlineUsers.get(socket.id);
+    if (!oldName || !newName.trim() || data.users[newName.trim()]) return;
+    const finalName = newName.trim();
+    data.users[finalName] = data.users[oldName];
+    delete data.users[oldName];
+    for (let user in data.users) {
+      const friends = data.users[user].friends;
+      const idx = friends.indexOf(oldName);
+      if (idx !== -1) friends[idx] = finalName;
+    }
+    onlineUsers.set(socket.id, finalName);
+    userSockets.delete(oldName);
+    userSockets.set(finalName, socket.id);
+    saveData();
+    socket.emit('user-data', {
+      name: finalName,
+      friends: data.users[finalName].friends,
+      groups: getGroupsForUser(finalName)
+    });
+    broadcastUsersList();
+  });
 });
 
+// ====== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ======
 function getPrivateKey(a, b) {
   return [a, b].sort().join(':');
 }
@@ -210,5 +273,17 @@ function broadcastUsersList() {
   io.emit('users-update', list);
 }
 
+function getGroupsForUser(userName) {
+  const result = [];
+  for (let groupName in data.groups) {
+    if (data.groups[groupName].members.includes(userName)) {
+      result.push(groupName);
+    }
+  }
+  return result;
+}
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Сервер запущен: http://localhost:${PORT}`);
+});
