@@ -328,62 +328,49 @@
 <!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
 <div id="app-screen">
   <div class="app">
-    <!-- Сайдбар -->
     <div class="sidebar">
-      <div class="search-bar">
-        <input type="text" placeholder="Поиск..." disabled>
-      </div>
+      <div class="search-bar"><input type="text" placeholder="Поиск..." disabled></div>
       <div class="tab-bar">
         <button class="tab-btn active" data-tab="chats">💬</button>
         <button class="tab-btn" data-tab="contacts">👥</button>
         <button class="tab-btn" data-tab="profile">👤</button>
         <button class="tab-btn" data-tab="settings">⚙️</button>
       </div>
-
-      <div class="panel active" id="chats-panel">
-        <div id="chat-list"></div>
-      </div>
+      <div class="panel active" id="chats-panel"><div id="chat-list"></div></div>
       <div class="panel" id="contacts-panel">
-        <div style="padding:10px 16px;font-weight:600;color:var(--text-secondary);">Друзья</div>
+        <div style="padding:10px 16px;font-weight:600;">Друзья</div>
         <div id="friends-list"></div>
-        <div style="padding:10px 16px;font-weight:600;color:var(--text-secondary);">Все пользователи</div>
+        <div style="padding:10px 16px;font-weight:600;">Все</div>
         <div id="all-users-list"></div>
       </div>
-
       <div class="panel" id="profile-panel" style="padding:16px;">
         <h3>Мой профиль</h3>
         <div style="text-align:center;margin:16px 0;">
           <div id="my-avatar-preview" class="profile-avatar-large" onclick="document.getElementById('avatar-upload').click()">😊</div>
           <input type="file" id="avatar-upload" accept="image/*" style="display:none">
-          <p style="font-size:0.8rem;color:var(--text-secondary);">Нажми на аватар, чтобы изменить</p>
+          <p style="font-size:0.8rem;">Нажми на аватар, чтобы изменить</p>
         </div>
         <label>Ник: <strong id="profile-nick"></strong></label>
-        <button id="change-nick-btn-profile" style="margin-left:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;">Сменить</button>
-        <div style="margin-top:12px;">
-          <label>Описание:</label><br>
+        <button id="change-nick-btn-profile" style="margin-left:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 12px;">Сменить</button>
+        <div style="margin-top:12px;"><label>Описание:</label><br>
           <textarea id="profile-description" rows="3" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;resize:none;"></textarea>
         </div>
-        <button id="save-profile-btn" style="background:var(--primary);color:white;border:none;padding:10px;border-radius:8px;margin-top:8px;width:100%;">Сохранить профиль</button>
+        <button id="save-profile-btn" style="background:var(--primary);color:white;border:none;padding:10px;border-radius:8px;margin-top:8px;width:100%;">Сохранить</button>
       </div>
-
       <div class="panel" id="settings-panel" style="padding:16px;">
         <p>Ник: <strong id="current-nick"></strong></p>
-        <button id="change-nick-btn-settings" style="background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;">Сменить ник</button>
+        <button id="change-nick-btn-settings" style="background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 12px;">Сменить ник</button>
         <hr>
         <div style="margin-top:12px;">
           <input type="text" id="group-name-input" placeholder="Название группы">
-          <button id="create-group-btn" style="margin-top:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;">Создать группу</button>
+          <button id="create-group-btn" style="margin-top:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:6px 12px;">Создать группу</button>
         </div>
-        <div style="margin-top:12px;">
-          <p style="font-weight:500;">Добавить друзей в группу:</p>
-          <div id="group-members-select"></div>
-        </div>
+        <div id="group-members-select"></div>
         <hr>
-        <button id="logout-btn" style="background:#ccc;border:none;border-radius:6px;padding:6px 12px;margin-top:12px;cursor:pointer;">Выйти</button>
+        <button id="logout-btn" style="background:#ccc;border:none;border-radius:6px;padding:6px 12px;margin-top:12px;">Выйти</button>
       </div>
     </div>
 
-    <!-- Основная область чата -->
     <div class="main">
       <div class="chat-header">
         <button class="back-btn" id="back-btn">←</button>
@@ -404,13 +391,14 @@
   </div>
 </div>
 
-<!-- Модальное окно просмотра профиля -->
+<!-- Модальное окно профиля друга -->
 <div id="profile-modal" class="modal">
   <span class="modal-close" onclick="document.getElementById('profile-modal').style.display='none'">✕</span>
   <div class="profile-avatar-large" id="profile-modal-avatar">A</div>
   <h3 id="profile-modal-name"></h3>
   <p class="profile-bio" id="profile-modal-bio"></p>
-  <button id="profile-modal-action" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:8px;">Добавить в друзья</button>
+  <button id="profile-modal-action" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;">Добавить в друзья</button>
+  <button id="profile-modal-call" style="background:#34c759;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;display:none;">📞 Позвонить</button>
 </div>
 
 <!-- Модальное окно смены ника -->
@@ -553,7 +541,7 @@
       const el = document.createElement('div');
       el.className = 'chat-list-item';
       el.innerHTML = `<div class="avatar">${friend.charAt(0)}</div><div class="chat-name">${friend}</div>`;
-      el.onclick = () => openChat(friend);
+      el.onclick = () => openProfileModal(friend);
       document.getElementById('friends-list').appendChild(el);
     });
 
@@ -619,14 +607,18 @@
     document.getElementById('profile-modal-bio').textContent = data.description || '';
     const avatarDiv = document.getElementById('profile-modal-avatar');
     avatarDiv.innerHTML = data.avatar ? `<img src="${data.avatar}" alt="avatar">` : data.username.charAt(0).toUpperCase();
-    const btn = document.getElementById('profile-modal-action');
+    const addBtn = document.getElementById('profile-modal-action');
+    const callBtn = document.getElementById('profile-modal-call');
     if (userFriends.includes(username)) {
-      btn.textContent = 'Удалить из друзей';
-      btn.onclick = () => { socket.emit('remove-friend', username); document.getElementById('profile-modal').style.display='none'; };
+      addBtn.textContent = 'Удалить из друзей';
+      addBtn.onclick = () => { socket.emit('remove-friend', username); document.getElementById('profile-modal').style.display='none'; };
     } else {
-      btn.textContent = 'Добавить в друзья';
-      btn.onclick = () => { socket.emit('add-friend', username); document.getElementById('profile-modal').style.display='none'; };
+      addBtn.textContent = 'Добавить в друзья';
+      addBtn.onclick = () => { socket.emit('add-friend', username); document.getElementById('profile-modal').style.display='none'; };
     }
+    // Показываем кнопку звонка, если это реальный пользователь (не AI)
+    callBtn.style.display = 'inline-block';
+    callBtn.onclick = () => { document.getElementById('profile-modal').style.display='none'; startCall(username); };
     document.getElementById('profile-modal').style.display = 'block';
   }
 
@@ -651,7 +643,6 @@
     document.getElementById('group-name-input').value = '';
   };
 
-  // Смена ника
   document.getElementById('change-nick-btn-settings').onclick = () => showChangeNickModal();
   document.getElementById('change-nick-btn-profile').onclick = () => showChangeNickModal();
   function showChangeNickModal() { document.getElementById('change-nick-modal').style.display = 'block'; }
@@ -723,7 +714,6 @@
     }
   });
 
-  // Обновление данных
   socket.on('user-data', data => {
     myName = data.name; userFriends = data.friends || []; userGroups = data.groups || [];
     document.getElementById('current-nick').textContent = myName;
@@ -734,14 +724,25 @@
   socket.on('users-update', users => { allUsers = users; if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts(); });
   socket.on('avatar-updated', ({username}) => {
     if (username === myName) loadMyProfile();
-    // при желании можно обновить аватарки в списках
   });
 
-  // ================== ЗВОНКИ ==================
+  // ================== ЗВОНКИ (исправлено) ==================
+  // Вызываем getUserMedia СИНХРОННО, чтобы не потерять контекст активации
+  function requestMedia() {
+    return navigator.mediaDevices.getUserMedia({video: true, audio: true});
+  }
+
   async function startCall(username) {
     currentCallPartner = username;
-    try { localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true}); }
-    catch (err) { alert('Доступ к камере/микрофону запрещён'); return; }
+    // Сначала синхронно (в этом же обработчике) запрашиваем доступ
+    let stream;
+    try {
+      stream = await requestMedia(); // здесь выполняется сразу, контекст активации сохраняется
+    } catch (err) {
+      alert('Не удалось получить доступ к камере/микрофону');
+      return;
+    }
+    localStream = stream;
     document.getElementById('local-video').srcObject = localStream;
     document.getElementById('call-modal').style.display = 'flex';
 
@@ -758,8 +759,15 @@
   socket.on('incoming-call', async ({ from, offer }) => {
     currentCallPartner = from;
     if (!confirm(`📞 Входящий звонок от ${from}`)) { socket.emit('end-call', { to: from }); return; }
-    try { localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true}); }
-    catch (err) { alert('Нет доступа к медиа'); socket.emit('end-call', { to: from }); return; }
+    let stream;
+    try {
+      stream = await requestMedia(); // синхронно в ответе на пользовательское действие (confirm – это тоже действие)
+    } catch (err) {
+      alert('Нет доступа к медиа');
+      socket.emit('end-call', { to: from });
+      return;
+    }
+    localStream = stream;
     document.getElementById('local-video').srcObject = localStream;
     document.getElementById('call-modal').style.display = 'flex';
 
@@ -788,7 +796,6 @@
 
   document.getElementById('end-call-btn').onclick = () => { if (currentCallPartner) socket.emit('end-call', { to: currentCallPartner }); closeCall(); };
 
-  // Заглушка журнала звонков
   document.getElementById('call-log-btn').onclick = () => alert('История звонков');
 
   // Старт
