@@ -35,6 +35,18 @@ if (fs.existsSync(DATA_FILE)) {
   } catch (e) { console.error('Ошибка чтения data.json'); }
 }
 
+// ====== ТЕСТОВЫЙ АККАУНТ (если ещё не создан) ======
+if (!data.users['Алексей']) {
+  data.users['Алексей'] = {
+    passwordHash: bcrypt.hashSync('1234', 8),
+    friends: [],
+    groups: [],
+    avatar: '',
+    description: 'Тестовый аккаунт'
+  };
+  console.log('✅ Тестовый аккаунт создан: Алексей / 1234');
+}
+
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
@@ -97,7 +109,6 @@ app.post('/api/update-profile', (req, res) => {
   if (avatar !== undefined) data.users[username].avatar = avatar;
   if (description !== undefined) data.users[username].description = description;
   saveData();
-  // Оповещаем всех об изменении аватара
   io.emit('avatar-updated', { username, avatar: data.users[username].avatar });
   res.json({ success: true, avatar: data.users[username].avatar, description: data.users[username].description });
 });
@@ -127,8 +138,8 @@ function getAIReply(userText) {
 }
 
 // ====== ПОЛЬЗОВАТЕЛИ ОНЛАЙН ======
-const onlineUsers = new Map(); // socket.id -> username
-const userSockets = new Map(); // username -> socket.id
+const onlineUsers = new Map();
+const userSockets = new Map();
 
 io.on('connection', (socket) => {
   console.log('Подключился:', socket.id);
@@ -299,9 +310,11 @@ io.on('connection', (socket) => {
   // ====== WEBRTC ЗВОНКИ ======
   socket.on('call-user', ({ toId, offer }) => {
     const callerName = onlineUsers.get(socket.id) || 'Неизвестный';
-    const receiverSocket = userSockets.get(toId); // toId здесь – имя получателя
+    const receiverSocket = userSockets.get(toId);
     if (receiverSocket) {
       io.to(receiverSocket).emit('incoming-call', { from: callerName, offer });
+    } else {
+      socket.emit('call-failed', { reason: 'Пользователь не в сети' });
     }
   });
 
