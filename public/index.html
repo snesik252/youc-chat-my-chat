@@ -22,7 +22,7 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif;
+      font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
       background: #b2b2b2;
       display: flex;
       justify-content: center;
@@ -33,14 +33,68 @@
       overflow: hidden;
     }
 
-    .app {
+    /* Экран аутентификации */
+    #auth-screen {
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .auth-container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      width: 320px;
+    }
+    .auth-container input {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .auth-container button {
+      width: 100%;
+      padding: 10px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      margin-top: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .auth-container p {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+    .auth-container a {
+      color: var(--primary);
+      cursor: pointer;
+    }
+    .auth-error {
+      color: red;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* Основной интерфейс */
+    #app-screen {
+      display: none;
       width: 100%;
       max-width: 1000px;
       height: 100vh;
       background: var(--bg-sidebar);
       box-shadow: var(--shadow);
       overflow: hidden;
+    }
+    .app {
+      display: flex;
+      height: 100%;
     }
 
     .sidebar {
@@ -110,7 +164,6 @@
       align-items: center;
       padding: 12px 16px;
       cursor: pointer;
-      transition: background 0.1s;
       border-bottom: 1px solid var(--border);
     }
     .chat-list-item:hover { background: #f5f5f5; }
@@ -128,14 +181,8 @@
       margin-right: 12px;
       flex-shrink: 0;
     }
-    .chat-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .chat-name {
-      font-weight: 500;
-      font-size: 1rem;
-    }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-name { font-weight: 500; font-size: 1rem; }
     .chat-last-msg {
       font-size: 0.85rem;
       color: var(--text-secondary);
@@ -222,9 +269,7 @@
       margin-bottom: 2px;
       display: block;
     }
-    .message .text {
-      display: inline;
-    }
+    .message .text { display: inline; }
     .message .time {
       font-size: 0.7rem;
       color: var(--text-secondary);
@@ -270,7 +315,6 @@
       cursor: pointer;
       padding: 4px;
       border-radius: 50%;
-      transition: background 0.1s;
     }
     .attach-btn:hover { background: #e0e0e0; }
     .send-btn {
@@ -282,46 +326,6 @@
       height: 40px;
       font-size: 1.3rem;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.4);
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .modal-content {
-      background: var(--bg-sidebar);
-      border-radius: 16px;
-      padding: 20px;
-      width: 90%;
-      max-width: 340px;
-    }
-    .modal-content input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 12px;
-      font-size: 1rem;
-      background: #f8f8f8;
-    }
-    .modal-btn {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      width: 100%;
-      margin-top: 6px;
     }
 
     @keyframes fadeIn {
@@ -338,128 +342,237 @@
   </style>
 </head>
 <body>
-<div class="app">
-  <!-- Сайдбар -->
-  <div class="sidebar">
-    <div class="search-bar">
-      <input type="text" placeholder="Поиск..." />
-    </div>
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="chats">💬 Чаты</button>
-      <button class="tab-btn" data-tab="contacts">👥 Контакты</button>
-      <button class="tab-btn" data-tab="settings">⚙️</button>
-    </div>
 
-    <div class="panel active" id="chatsPanel">
-      <div id="chatList"></div>
+<!-- ЭКРАН ВХОДА / РЕГИСТРАЦИИ -->
+<div id="auth-screen">
+  <div class="auth-container">
+    <div id="login-form">
+      <h2>Вход</h2>
+      <input type="text" id="login-username" placeholder="Ник" autocomplete="off">
+      <input type="password" id="login-password" placeholder="Пароль">
+      <button id="login-btn">Войти</button>
+      <p>Нет аккаунта? <a id="show-register-link">Регистрация</a></p>
     </div>
-    <div class="panel" id="contactsPanel">
-      <div style="padding: 10px 16px; font-weight: 600; color: var(--text-secondary);">Друзья</div>
-      <div id="friendsList"></div>
-      <div style="padding: 10px 16px; font-weight: 600; color: var(--text-secondary);">Все пользователи</div>
-      <div id="allUsersList"></div>
+    <div id="register-form" style="display:none;">
+      <h2>Регистрация</h2>
+      <input type="text" id="reg-username" placeholder="Ник" autocomplete="off">
+      <input type="password" id="reg-password" placeholder="Пароль">
+      <input type="password" id="reg-password2" placeholder="Повтори пароль">
+      <button id="register-btn">Зарегистрироваться</button>
+      <p>Уже есть аккаунт? <a id="show-login-link">Войти</a></p>
     </div>
-    <div class="panel" id="settingsPanel" style="padding:16px;">
-      <p>Ник: <strong id="currentNick"></strong></p>
-      <button class="modal-btn" onclick="openChangeNickModal()">Сменить ник</button>
-      <div style="margin-top:16px;">
-        <input type="text" id="groupNameInput" placeholder="Название группы" />
-        <button class="modal-btn" onclick="createGroup()">Создать группу</button>
-      </div>
-      <div style="margin-top:12px;">
-        <p style="font-weight:500;">Добавить друзей в группу:</p>
-        <div id="groupMembersSelect"></div>
-      </div>
-    </div>
+    <div class="auth-error" id="auth-error"></div>
   </div>
+</div>
 
-  <!-- Основной чат -->
-  <div class="main">
-    <div class="chat-header">
-      <button class="back-btn" id="backBtn">←</button>
-      <span id="headerTitle">Общий чат</span>
-      <span style="flex:1;"></span>
-      <button id="callLogBtn" style="background:none;border:none;font-size:1.3rem;cursor:pointer;">📋</button>
+<!-- ОСНОВНОЙ ИНТЕРФЕЙС (скрыт до входа) -->
+<div id="app-screen">
+  <div class="app">
+    <!-- Сайдбар -->
+    <div class="sidebar">
+      <div class="search-bar">
+        <input type="text" placeholder="Поиск..." id="search-input">
+      </div>
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="chats">💬 Чаты</button>
+        <button class="tab-btn" data-tab="contacts">👥 Контакты</button>
+        <button class="tab-btn" data-tab="settings">⚙️</button>
+      </div>
+
+      <div class="panel active" id="chats-panel">
+        <div id="chat-list"></div>
+      </div>
+      <div class="panel" id="contacts-panel">
+        <div style="padding:10px 16px;font-weight:600;color:var(--text-secondary);">Друзья</div>
+        <div id="friends-list"></div>
+        <div style="padding:10px 16px;font-weight:600;color:var(--text-secondary);">Все пользователи</div>
+        <div id="all-users-list"></div>
+      </div>
+      <div class="panel" id="settings-panel" style="padding:16px;">
+        <p>Ник: <strong id="current-nick"></strong></p>
+        <button class="add-friend-btn" id="change-nick-btn" style="width:auto;display:block;margin:8px 0;">Сменить ник</button>
+        <hr>
+        <div style="margin-top:12px;">
+          <input type="text" id="group-name-input" placeholder="Название группы">
+          <button class="add-friend-btn" id="create-group-btn" style="width:auto;">Создать группу</button>
+        </div>
+        <div style="margin-top:12px;">
+          <p style="font-weight:500;">Добавить друзей в группу:</p>
+          <div id="group-members-select"></div>
+        </div>
+        <hr>
+        <button class="add-friend-btn" id="logout-btn" style="background:#ccc;width:auto;margin-top:12px;">Выйти</button>
+      </div>
     </div>
-    <div class="messages" id="messagesContainer"></div>
-    <div class="input-area">
-      <input type="file" id="imageInput" accept="image/*" style="display:none">
-      <button class="attach-btn" id="attachBtn">📎</button>
-      <form id="messageForm" style="display:flex;flex:1;gap:8px;">
-        <input type="text" id="msgInput" placeholder="Сообщение..." autofocus autocomplete="off">
-        <button class="send-btn" type="submit">➤</button>
-      </form>
+
+    <!-- Чат -->
+    <div class="main">
+      <div class="chat-header">
+        <button class="back-btn" id="back-btn">←</button>
+        <span id="header-title">Общий чат</span>
+        <span style="flex:1;"></span>
+        <button id="call-log-btn" style="background:none;border:none;font-size:1.3rem;cursor:pointer;">📋</button>
+      </div>
+      <div class="messages" id="messages-container"></div>
+      <div class="input-area">
+        <input type="file" id="image-input" accept="image/*" style="display:none">
+        <button class="attach-btn" id="attach-btn">📎</button>
+        <form id="message-form" style="display:flex;flex:1;gap:8px;">
+          <input type="text" id="msg-input" placeholder="Сообщение..." autofocus autocomplete="off">
+          <button class="send-btn" type="submit">➤</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Модальное окно смены ника -->
-<div class="modal" id="changeNickModal">
-  <div class="modal-content">
-    <h3 style="margin-bottom:12px;">Новый ник</h3>
-    <input type="text" id="newNickInput" placeholder="Введите новый ник">
-    <button class="modal-btn" onclick="changeNick()">Сохранить</button>
-    <button class="modal-btn" onclick="closeModal('changeNickModal')" style="background: #ccc; margin-top:4px;">Отмена</button>
-  </div>
+<div id="change-nick-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.2);z-index:1000;">
+  <h3>Новый ник</h3>
+  <input type="text" id="new-nick-input" placeholder="Новый ник" style="width:100%;margin:8px 0;padding:8px;border:1px solid #dadada;border-radius:8px;">
+  <button class="add-friend-btn" id="save-nick-btn">Сохранить</button>
+  <button class="add-friend-btn" style="background:#ccc;" onclick="document.getElementById('change-nick-modal').style.display='none'">Отмена</button>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+  // ================== ПЕРЕМЕННЫЕ ==================
   const socket = io();
-
-  // ================== Данные ==================
-  let myName = localStorage.getItem('nickname') || '';
-  if (!myName) {
-    myName = prompt('Введите ваш ник:');
-    if (!myName) myName = 'Гость_' + Math.floor(Math.random() * 1000);
-    localStorage.setItem('nickname', myName);
-  }
-  socket.emit('register', myName);
-
+  let myName = '';
+  let token = localStorage.getItem('authToken');
+  let currentChat = { target: 'general', isGroup: false };
   let userFriends = [];
   let userGroups = [];
-  let currentChat = { target: 'general', isGroup: false }; // по умолчанию общий чат
-  let allUsersData = [];
+  let allUsers = [];
 
-  const chatListEl = document.getElementById('chatList');
-  const messagesContainer = document.getElementById('messagesContainer');
-  const msgInput = document.getElementById('msgInput');
-  const messageForm = document.getElementById('messageForm');
-  const imageInput = document.getElementById('imageInput');
-  const attachBtn = document.getElementById('attachBtn');
-  const headerTitle = document.getElementById('headerTitle');
-  const backBtn = document.getElementById('backBtn');
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const panels = {
-    chats: document.getElementById('chatsPanel'),
-    contacts: document.getElementById('contactsPanel'),
-    settings: document.getElementById('settingsPanel')
-  };
+  // DOM
+  const authScreen = document.getElementById('auth-screen');
+  const appScreen = document.getElementById('app-screen');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const authError = document.getElementById('auth-error');
+  const chatListEl = document.getElementById('chat-list');
+  const messagesContainer = document.getElementById('messages-container');
+  const headerTitle = document.getElementById('header-title');
+  const backBtn = document.getElementById('back-btn');
 
-  // ================== Вкладки ==================
-  tabButtons.forEach(btn => {
+  // ================== АУТЕНТИФИКАЦИЯ ==================
+  function showError(msg) { authError.textContent = msg; }
+
+  document.getElementById('show-register-link').addEventListener('click', () => {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+    authError.textContent = '';
+  });
+  document.getElementById('show-login-link').addEventListener('click', () => {
+    registerForm.style.display = 'none';
+    loginForm.style.display = 'block';
+    authError.textContent = '';
+  });
+
+  document.getElementById('register-btn').addEventListener('click', async () => {
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const password2 = document.getElementById('reg-password2').value;
+    if (!username || !password) { showError('Заполните все поля'); return; }
+    if (password !== password2) { showError('Пароли не совпадают'); return; }
+
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error); return; }
+
+    // Автоматический вход после регистрации
+    const loginRes = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const loginData = await loginRes.json();
+    if (loginRes.ok) {
+      token = loginData.token;
+      localStorage.setItem('authToken', token);
+      myName = loginData.username;
+      socket.emit('register', myName);
+      showChat();
+    } else {
+      showError(loginData.error);
+    }
+  });
+
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!username || !password) { showError('Заполните все поля'); return; }
+
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error); return; }
+
+    token = data.token;
+    localStorage.setItem('authToken', token);
+    myName = data.username;
+    socket.emit('register', myName);
+    showChat();
+  });
+
+  // Проверка сессии
+  async function checkSession() {
+    if (!token) return showAuth();
+    try {
+      const res = await fetch('/api/me', { headers: { authorization: token } });
+      if (!res.ok) { localStorage.removeItem('authToken'); showAuth(); return; }
+      const data = await res.json();
+      myName = data.username;
+      socket.emit('register', myName);
+      showChat();
+    } catch (e) {
+      showAuth();
+    }
+  }
+
+  function showAuth() {
+    authScreen.style.display = 'flex';
+    appScreen.style.display = 'none';
+  }
+  function showChat() {
+    authScreen.style.display = 'none';
+    appScreen.style.display = 'block';
+    renderChatList();
+    document.getElementById('current-nick').textContent = myName;
+    socket.emit('get-history', { target: 'general', isGroup: false });
+  }
+
+  // ================== ВКЛАДКИ ==================
+  document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
-      tabButtons.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      Object.values(panels).forEach(p => p.classList.remove('active'));
-      panels[tab].classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(tab + '-panel').classList.add('active');
       if (tab === 'contacts') renderContacts();
       if (tab === 'settings') renderSettings();
     });
   });
 
-  // ================== Список чатов (добавлен Общий чат) ==================
+  // ================== СПИСОК ЧАТОВ ==================
   function renderChatList() {
     chatListEl.innerHTML = '';
-    // Общий чат
-    createChatListItem('general', '🌐 Общий чат', 'Общий чат');
-    createChatListItem('ai-bot', '🤖 AI Друг', 'Чат с ИИ');
-    userFriends.forEach(friend => createChatListItem(friend, friend, 'Личные сообщения'));
-    userGroups.forEach(group => createChatListItem(group, group, 'Группа', true));
+    createChatItem('general', '🌐 Общий чат', 'Общий чат');
+    createChatItem('ai-bot', '🤖 AI Друг', 'Чат с ИИ');
+    userFriends.forEach(f => createChatItem(f, f, 'Личные сообщения'));
+    userGroups.forEach(g => createChatItem(g, g, 'Группа', true));
   }
 
-  function createChatListItem(target, name, subtitle, isGroup = false) {
+  function createChatItem(target, name, subtitle, isGroup = false) {
     const div = document.createElement('div');
     div.className = 'chat-list-item';
     div.innerHTML = `
@@ -481,23 +594,21 @@
     socket.emit('get-history', { target, isGroup });
   }
 
-  backBtn.addEventListener('click', () => {
-    openChat('general', false); // возврат в общий чат
-  });
+  backBtn.addEventListener('click', () => openChat('general', false));
 
-  // ================== Контакты ==================
+  // ================== КОНТАКТЫ ==================
   function renderContacts() {
-    document.getElementById('friendsList').innerHTML = '';
+    document.getElementById('friends-list').innerHTML = '';
     userFriends.forEach(friend => {
       const el = document.createElement('div');
       el.className = 'chat-list-item';
       el.innerHTML = `<div class="avatar">${friend.charAt(0)}</div><div class="chat-name">${friend}</div>`;
       el.onclick = () => openChat(friend);
-      document.getElementById('friendsList').appendChild(el);
+      document.getElementById('friends-list').appendChild(el);
     });
 
-    document.getElementById('allUsersList').innerHTML = '';
-    allUsersData.forEach(user => {
+    document.getElementById('all-users-list').innerHTML = '';
+    allUsers.forEach(user => {
       if (user.name === myName || user.isAI || userFriends.includes(user.name)) return;
       const el = document.createElement('div');
       el.className = 'chat-list-item';
@@ -505,38 +616,55 @@
       const addBtn = document.createElement('button');
       addBtn.className = 'add-friend-btn';
       addBtn.textContent = 'Добавить';
-      addBtn.onclick = (e) => {
-        e.stopPropagation();
-        socket.emit('add-friend', user.name);
-      };
+      addBtn.onclick = (e) => { e.stopPropagation(); socket.emit('add-friend', user.name); };
       el.appendChild(addBtn);
-      document.getElementById('allUsersList').appendChild(el);
+      document.getElementById('all-users-list').appendChild(el);
     });
   }
 
-  // ================== Настройки ==================
+  // ================== НАСТРОЙКИ ==================
   function renderSettings() {
-    document.getElementById('currentNick').textContent = myName;
-    document.getElementById('groupMembersSelect').innerHTML = '';
+    document.getElementById('current-nick').textContent = myName;
+    document.getElementById('group-members-select').innerHTML = '';
     userFriends.forEach(friend => {
       const label = document.createElement('label');
       label.style.display = 'block';
       label.innerHTML = `<input type="checkbox" value="${friend}"> ${friend}`;
-      document.getElementById('groupMembersSelect').appendChild(label);
+      document.getElementById('group-members-select').appendChild(label);
     });
   }
 
-  function createGroup() {
-    const name = document.getElementById('groupNameInput').value.trim();
+  document.getElementById('create-group-btn').addEventListener('click', () => {
+    const name = document.getElementById('group-name-input').value.trim();
     if (!name) return alert('Введите название группы');
-    const checks = document.querySelectorAll('#groupMembersSelect input:checked');
+    const checks = document.querySelectorAll('#group-members-select input:checked');
     const members = Array.from(checks).map(cb => cb.value);
-    if (members.length === 0) return alert('Выберите участников');
     socket.emit('create-group', { name, members });
-    document.getElementById('groupNameInput').value = '';
-  }
+    document.getElementById('group-name-input').value = '';
+  });
 
-  // ================== Отправка сообщений (включая общий чат) ==================
+  document.getElementById('change-nick-btn').addEventListener('click', () => {
+    document.getElementById('change-nick-modal').style.display = 'block';
+  });
+  document.getElementById('save-nick-btn').addEventListener('click', () => {
+    const newNick = document.getElementById('new-nick-input').value.trim();
+    if (!newNick) return;
+    socket.emit('change-name', newNick);
+    document.getElementById('change-nick-modal').style.display = 'none';
+    document.getElementById('new-nick-input').value = '';
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('authToken');
+    location.reload();
+  });
+
+  // ================== ОТПРАВКА СООБЩЕНИЙ ==================
+  const messageForm = document.getElementById('message-form');
+  const msgInput = document.getElementById('msg-input');
+  const imageInput = document.getElementById('image-input');
+  const attachBtn = document.getElementById('attach-btn');
+
   attachBtn.addEventListener('click', () => imageInput.click());
 
   messageForm.addEventListener('submit', (e) => {
@@ -580,17 +708,18 @@
     msgInput.focus();
   });
 
+  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ (убирает серые дубликаты)
   function appendMessage(msg, isMine, isPending = false) {
+    // Удаляем все временные сообщения, у которых совпадает автор и текст (или картинка)
     if (!isPending) {
-      const pendingEls = document.querySelectorAll('.message.pending');
-      pendingEls.forEach(el => {
-        const authorEl = el.querySelector('.author');
-        const textEl = el.querySelector('.text');
-        const imgEl = el.querySelector('img');
-        const sameAuthor = authorEl && authorEl.textContent === msg.author;
-        const sameText = textEl && textEl.textContent === (msg.text || '');
-        const sameImage = imgEl ? imgEl.src === msg.image : !msg.image;
-        if (sameAuthor && sameText && sameImage) el.remove();
+      document.querySelectorAll('.message.pending').forEach(el => {
+        const elAuthor = el.querySelector('.author')?.textContent;
+        const elText = el.querySelector('.text')?.textContent;
+        const elImg = el.querySelector('img');
+        if (elAuthor === msg.author &&
+            (elText === (msg.text || '') || (elImg && elImg.src === msg.image))) {
+          el.remove();
+        }
       });
     }
 
@@ -608,17 +737,13 @@
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-  // ================== Приём сообщений ==================
+  // ================== ПРИЁМ СООБЩЕНИЙ ==================
   socket.on('general message', (msg) => {
-    if (currentChat.target === 'general') {
-      appendMessage(msg, msg.author === myName, false);
-    }
+    if (currentChat.target === 'general') appendMessage(msg, msg.author === myName, false);
   });
 
   socket.on('private message', (msg) => {
-    if (currentChat.target === msg.author) {
-      appendMessage(msg, msg.author === myName, false);
-    }
+    if (currentChat.target === msg.author) appendMessage(msg, msg.author === myName, false);
   });
 
   socket.on('group message', (data) => {
@@ -634,46 +759,26 @@
     }
   });
 
-  // ================== Обновление данных ==================
   socket.on('user-data', (data) => {
     myName = data.name;
-    localStorage.setItem('nickname', myName);
     userFriends = data.friends || [];
     userGroups = data.groups || [];
+    document.getElementById('current-nick').textContent = myName;
     renderChatList();
-    if (panels.contacts.classList.contains('active')) renderContacts();
-    if (panels.settings.classList.contains('active')) renderSettings();
+    if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts();
+    if (document.getElementById('settings-panel').classList.contains('active')) renderSettings();
   });
 
   socket.on('users-update', (users) => {
-    allUsersData = users;
-    if (panels.contacts.classList.contains('active')) renderContacts();
+    allUsers = users;
+    if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts();
   });
 
-  // ================== Модалки ==================
-  function openChangeNickModal() {
-    document.getElementById('changeNickModal').style.display = 'flex';
-  }
-  function closeModal(id) {
-    document.getElementById(id).style.display = 'none';
-  }
-  function changeNick() {
-    const newNick = document.getElementById('newNickInput').value.trim();
-    if (!newNick) return;
-    socket.emit('change-name', newNick);
-    closeModal('changeNickModal');
-  }
-  window.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal')) e.target.style.display = 'none';
-  });
+  // Заглушка звонков
+  document.getElementById('call-log-btn').addEventListener('click', () => alert('История звонков (можно добавить)'));
 
-  document.getElementById('callLogBtn').addEventListener('click', () => {
-    alert('История звонков (можно добавить)');
-  });
-
-  // Первичная загрузка истории общего чата
-  socket.emit('get-history', { target: 'general', isGroup: false });
-  renderChatList();
+  // Старт
+  checkSession();
 </script>
 </body>
 </html>
