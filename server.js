@@ -10,7 +10,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.json({ limit: '5mb' })); // увеличен лимит для аватарок
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static('public'));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -27,10 +27,10 @@ if (fs.existsSync(DATA_FILE)) {
     data = { ...data, ...loaded };
     if (!data.messages.general) data.messages.general = [];
     if (!data.sessions) data.sessions = {};
-    // инициализируем аватар и описание у старых пользователей
     for (let user in data.users) {
       if (!data.users[user].avatar) data.users[user].avatar = '';
       if (!data.users[user].description) data.users[user].description = '';
+      if (!data.users[user].friends) data.users[user].friends = [];
     }
   } catch (e) { console.error('Ошибка чтения data.json'); }
 }
@@ -48,7 +48,6 @@ app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
   if (data.users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
-
   const passwordHash = bcrypt.hashSync(password, 8);
   data.users[username] = {
     passwordHash,
@@ -83,16 +82,11 @@ app.get('/api/me', (req, res) => {
   res.json({ username, avatar: user?.avatar || '', description: user?.description || '' });
 });
 
-// ====== ПРОФИЛЬ ======
 app.get('/api/user/:username', (req, res) => {
   const username = req.params.username;
   const user = data.users[username];
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-  res.json({
-    username,
-    avatar: user.avatar || '',
-    description: user.description || ''
-  });
+  res.json({ username, avatar: user.avatar || '', description: user.description || '' });
 });
 
 app.post('/api/update-profile', (req, res) => {
@@ -103,6 +97,8 @@ app.post('/api/update-profile', (req, res) => {
   if (avatar !== undefined) data.users[username].avatar = avatar;
   if (description !== undefined) data.users[username].description = description;
   saveData();
+  // Оповещаем всех об изменении аватара
+  io.emit('avatar-updated', { username, avatar: data.users[username].avatar });
   res.json({ success: true, avatar: data.users[username].avatar, description: data.users[username].description });
 });
 
@@ -131,8 +127,8 @@ function getAIReply(userText) {
 }
 
 // ====== ПОЛЬЗОВАТЕЛИ ОНЛАЙН ======
-const onlineUsers = new Map();
-const userSockets = new Map();
+const onlineUsers = new Map(); // socket.id -> username
+const userSockets = new Map(); // username -> socket.id
 
 io.on('connection', (socket) => {
   console.log('Подключился:', socket.id);
@@ -298,6 +294,36 @@ io.on('connection', (socket) => {
       description: data.users[finalName].description || ''
     });
     broadcastUsersList();
+  });
+
+  // ====== WEBRTC ЗВОНКИ ======
+  socket.on('call-user', ({ toId, offer }) => {
+    const callerName = onlineUsers.get(socket.id) || 'Неизвестный';
+    const receiverSocket = userSockets.get(toId); // toId здесь – имя получателя
+    if (receiverSocket) {
+      io.to(receiverSocket).emit('incoming-call', { from: callerName, offer });
+    }
+  });
+
+  socket.on('answer-call', ({ to, answer }) => {
+    const receiverSocket = userSockets.get(to);
+    if (receiverSocket) {
+      io.to(receiverSocket).emit('call-answered', { answer });
+    }
+  });
+
+  socket.on('ice-candidate', ({ to, candidate }) => {
+    const receiverSocket = userSockets.get(to);
+    if (receiverSocket) {
+      io.to(receiverSocket).emit('ice-candidate', { candidate });
+    }
+  });
+
+  socket.on('end-call', ({ to }) => {
+    const receiverSocket = userSockets.get(to);
+    if (receiverSocket) {
+      io.to(receiverSocket).emit('call-ended');
+    }
   });
 });
 
