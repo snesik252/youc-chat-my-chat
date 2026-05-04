@@ -1,0 +1,1 @@
+Hi! To get everything working, I'll tell you that this project runs on hosting. To launch the messenger, you need to download node.js and the necessary modules, then type node server.js into the cmd prompt. After that, your local server will be up and running.
