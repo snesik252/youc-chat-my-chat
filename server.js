@@ -10,10 +10,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.json());
+app.use(express.json({ limit: '5mb' })); // увеличен лимит для аватарок
 app.use(express.static('public'));
 
-// ====== Хранилище данных ======
 const DATA_FILE = path.join(__dirname, 'data.json');
 let data = {
   users: {},
@@ -28,6 +27,11 @@ if (fs.existsSync(DATA_FILE)) {
     data = { ...data, ...loaded };
     if (!data.messages.general) data.messages.general = [];
     if (!data.sessions) data.sessions = {};
+    // инициализируем аватар и описание у старых пользователей
+    for (let user in data.users) {
+      if (!data.users[user].avatar) data.users[user].avatar = '';
+      if (!data.users[user].description) data.users[user].description = '';
+    }
   } catch (e) { console.error('Ошибка чтения data.json'); }
 }
 
@@ -49,7 +53,9 @@ app.post('/api/register', (req, res) => {
   data.users[username] = {
     passwordHash,
     friends: [],
-    groups: []
+    groups: [],
+    avatar: '',
+    description: ''
   };
   saveData();
   res.json({ success: true });
@@ -72,7 +78,32 @@ app.post('/api/login', (req, res) => {
 app.get('/api/me', (req, res) => {
   const token = req.headers.authorization;
   if (!token || !data.sessions[token]) return res.status(401).json({ error: 'Не авторизован' });
-  res.json({ username: data.sessions[token] });
+  const username = data.sessions[token];
+  const user = data.users[username];
+  res.json({ username, avatar: user?.avatar || '', description: user?.description || '' });
+});
+
+// ====== ПРОФИЛЬ ======
+app.get('/api/user/:username', (req, res) => {
+  const username = req.params.username;
+  const user = data.users[username];
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  res.json({
+    username,
+    avatar: user.avatar || '',
+    description: user.description || ''
+  });
+});
+
+app.post('/api/update-profile', (req, res) => {
+  const token = req.headers.authorization;
+  if (!token || !data.sessions[token]) return res.status(401).json({ error: 'Не авторизован' });
+  const username = data.sessions[token];
+  const { avatar, description } = req.body;
+  if (avatar !== undefined) data.users[username].avatar = avatar;
+  if (description !== undefined) data.users[username].description = description;
+  saveData();
+  res.json({ success: true, avatar: data.users[username].avatar, description: data.users[username].description });
 });
 
 // ====== AI-ДРУГ ======
@@ -100,8 +131,8 @@ function getAIReply(userText) {
 }
 
 // ====== ПОЛЬЗОВАТЕЛИ ОНЛАЙН ======
-const onlineUsers = new Map(); // socket.id -> username
-const userSockets = new Map(); // username -> socket.id
+const onlineUsers = new Map();
+const userSockets = new Map();
 
 io.on('connection', (socket) => {
   console.log('Подключился:', socket.id);
@@ -113,7 +144,9 @@ io.on('connection', (socket) => {
     socket.emit('user-data', {
       name: username,
       friends: data.users[username].friends || [],
-      groups: getGroupsForUser(username)
+      groups: getGroupsForUser(username),
+      avatar: data.users[username].avatar || '',
+      description: data.users[username].description || ''
     });
     broadcastUsersList();
   });
@@ -199,7 +232,9 @@ io.on('connection', (socket) => {
       socket.emit('user-data', {
         name: myName,
         friends: data.users[myName].friends,
-        groups: getGroupsForUser(myName)
+        groups: getGroupsForUser(myName),
+        avatar: data.users[myName].avatar || '',
+        description: data.users[myName].description || ''
       });
     }
   });
@@ -212,7 +247,9 @@ io.on('connection', (socket) => {
     socket.emit('user-data', {
       name: myName,
       friends: data.users[myName].friends,
-      groups: getGroupsForUser(myName)
+      groups: getGroupsForUser(myName),
+      avatar: data.users[myName].avatar || '',
+      description: data.users[myName].description || ''
     });
   });
 
@@ -230,7 +267,9 @@ io.on('connection', (socket) => {
         io.to(sockId).emit('user-data', {
           name: member,
           friends: data.users[member]?.friends || [],
-          groups: getGroupsForUser(member)
+          groups: getGroupsForUser(member),
+          avatar: data.users[member]?.avatar || '',
+          description: data.users[member]?.description || ''
         });
       }
     });
@@ -254,21 +293,30 @@ io.on('connection', (socket) => {
     socket.emit('user-data', {
       name: finalName,
       friends: data.users[finalName].friends,
-      groups: getGroupsForUser(finalName)
+      groups: getGroupsForUser(finalName),
+      avatar: data.users[finalName].avatar || '',
+      description: data.users[finalName].description || ''
     });
     broadcastUsersList();
   });
 });
 
-// ====== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ======
+// ====== ВСПОМОГАТЕЛЬНЫЕ ======
 function getPrivateKey(a, b) {
   return [a, b].sort().join(':');
 }
 
 function broadcastUsersList() {
-  const list = [{ id: 'ai-bot', name: '🤖 AI Друг', isAI: true }];
+  const list = [{ id: 'ai-bot', name: '🤖 AI Друг', isAI: true, avatar: '' }];
   onlineUsers.forEach((name, id) => {
-    list.push({ id, name, isAI: false });
+    const user = data.users[name];
+    list.push({
+      id,
+      name,
+      isAI: false,
+      avatar: user?.avatar || '',
+      description: user?.description || ''
+    });
   });
   io.emit('users-update', list);
 }
