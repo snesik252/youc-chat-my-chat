@@ -1,0 +1,77 @@
+{
+  "chats": {
+    "general": [
+      {
+        "author": "snes",
+        "text": "ку",
+        "time": "21:01",
+        "image": null
+      },
+      {
+        "author": "67",
+        "text": "67",
+        "time": "21:04",
+        "image": null
+      },
+      {
+        "author": "snesik",
+        "text": "67",
+        "time": "21:06",
+        "image": null
+      }
+    ],
+    "private": {
+      "ai-bot:snes": [
+        {
+          "author": "snes",
+          "text": "привет",
+          "time": "21:01",
+          "image": null
+        },
+        {
+          "author": "🤖 AI Друг",
+          "text": "Привет! Как у тебя дела?",
+          "time": "21:01",
+          "fromAI": true
+        }
+      ],
+      "67:snesik": [
+        {
+          "author": "snesik",
+          "text": "люблю 67",
+          "time": "21:11",
+          "image": null
+        },
+        {
+          "author": "67",
+          "text": "я тоже",
+          "time": "21:12",
+          "image": null
+        }
+      ],
+      "snesik:Аноним": [
+        {
+          "author": "Аноним",
+          "text": "пошли нахуй",
+          "time": "21:13",
+          "image": null
+        },
+        {
+          "author": "Аноним",
+          "text": "иди нофиг",
+          "time": "21:13",
+          "image": null
+        }
+      ],
+      "67:snes": [
+        {
+          "author": "snes",
+          "text": "паси нафиг",
+          "time": "21:13",
+          "image": null
+        }
+      ]
+    }
+  },
+  "callLog": []
+}
