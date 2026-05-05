@@ -27,39 +27,10 @@
       height: 100vh;
       overflow: hidden;
     }
-    #auth-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .auth-container {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-      width: 320px;
-    }
-    .auth-container input {
-      width: 100%;
-      padding: 10px;
-      margin: 6px 0;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-    .auth-container button {
-      width: 100%;
-      padding: 10px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      margin-top: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
+    #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    .auth-container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); width: 320px; }
+    .auth-container input { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+    .auth-container button { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; margin-top: 6px; font-size: 1rem; cursor: pointer; }
     .auth-container p { text-align: center; margin-top: 12px; font-size: 0.9rem; }
     .auth-container a { color: var(--primary); cursor: pointer; }
     .auth-error { color: red; text-align: center; margin-top: 8px; }
@@ -67,254 +38,67 @@
     #app-screen { display: none; width: 100%; height: 100vh; background: #fff; }
     .app { display: flex; height: 100%; }
 
-    .sidebar {
-      width: 300px;
-      background: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
+    .sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
     .search-bar { padding: 8px 12px; border-bottom: 1px solid var(--border); }
-    .search-bar input {
-      width: 100%;
-      padding: 8px 14px;
-      border: none;
-      border-radius: 10px;
-      background: #f0f0f0;
-      font-size: 0.95rem;
-      outline: none;
-    }
+    .search-bar input { width: 100%; padding: 8px 14px; border: none; border-radius: 10px; background: #f0f0f0; font-size: 0.95rem; outline: none; }
     .tab-bar { display: flex; background: #f8f8f8; border-bottom: 1px solid var(--border); }
-    .tab-btn {
-      flex: 1;
-      padding: 10px 0;
-      text-align: center;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      border: none;
-      background: transparent;
-      position: relative;
-      transition: 0.15s;
-    }
+    .tab-btn { flex: 1; padding: 10px 0; text-align: center; cursor: pointer; font-weight: 500; font-size: 0.9rem; color: var(--text-secondary); border: none; background: transparent; position: relative; transition: 0.15s; }
     .tab-btn.active { color: var(--primary); font-weight: 600; }
-    .tab-btn.active::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 70%;
-      height: 3px;
-      background: var(--primary);
-      border-radius: 3px;
-    }
+    .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 70%; height: 3px; background: var(--primary); border-radius: 3px; }
     .panel { flex: 1; overflow-y: auto; display: none; }
     .panel.active { display: block; }
 
-    .chat-list-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 16px;
-      cursor: pointer;
-      border-bottom: 1px solid var(--border);
-    }
+    .chat-list-item { display: flex; align-items: center; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border); }
     .chat-list-item:hover { background: #f5f5f5; }
-    .avatar {
-      width: 48px; height: 48px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 1.2rem;
-      margin-right: 12px;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1.2rem; margin-right: 12px; flex-shrink: 0; overflow: hidden; }
     .avatar img { width: 100%; height: 100%; object-fit: cover; }
     .chat-info { flex: 1; min-width: 0; }
     .chat-name { font-weight: 500; font-size: 1rem; }
-    .chat-last-msg {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .chat-last-msg { font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .main { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); }
-    .chat-header {
-      height: 56px;
-      background: var(--bg-sidebar);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 12px;
-    }
-    .back-btn {
-      background: none;
-      border: none;
-      font-size: 1.6rem;
-      cursor: pointer;
-      color: var(--primary);
-      display: none;
-    }
-    .call-btn-header {
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      font-size: 1.3rem;
-      cursor: pointer;
-      display: none;  /* показывается только в личных чатах */
-      align-items: center;
-      justify-content: center;
-      margin-left: auto;
-    }
-    .messages {
-      flex: 1;
-      padding: 20px 16px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .message {
-      max-width: 80%;
-      padding: 8px 12px;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      word-wrap: break-word;
-      position: relative;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-      animation: fadeIn 0.15s;
-    }
+    .chat-header { height: 56px; background: var(--bg-sidebar); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 12px; }
+    .back-btn { background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--primary); display: none; }
+    .call-btn-header { background: var(--primary); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.3rem; cursor: pointer; display: none; align-items: center; justify-content: center; margin-left: auto; }
+
+    .messages { flex: 1; padding: 20px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .message { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.08); animation: fadeIn 0.15s; }
     .message.mine { align-self: flex-end; background: var(--msg-mine); border-bottom-right-radius: 4px; }
     .message.other { align-self: flex-start; background: var(--msg-other); border-bottom-left-radius: 4px; }
     .message.pending { opacity: 0.6; }
-    .message .author {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--primary);
-      margin-bottom: 2px;
-      display: inline-block;
-      cursor: pointer;
-    }
+    .message .author { font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 2px; display: inline-block; cursor: pointer; }
     .message .author:hover { text-decoration: underline; }
     .message .text { display: inline; }
     .message .time { font-size: 0.7rem; color: var(--text-secondary); float: right; margin-left: 8px; margin-top: 2px; }
-    .message img { max-width: 200px; max-height: 200px; border-radius: 8px; display: block; margin-top: 4px; }
-
-    .input-area {
-      display: flex;
-      padding: 10px 16px;
-      background: var(--bg-sidebar);
-      border-top: 1px solid var(--border);
-      align-items: center;
-      gap: 8px;
-    }
+    .message img { max-width: 200px; max-height: 200px; border-radius: 8px; display: block; margin-top: 4px; cursor: pointer; }
+    /* Предпросмотр фото перед отправкой */
+    .preview-area { display: none; padding: 8px 16px; background: var(--bg-sidebar); border-top: 1px solid var(--border); align-items: center; gap: 8px; }
+    .preview-area img { max-height: 60px; border-radius: 6px; }
+    .preview-area .remove-preview { background: #ccc; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 1rem; }
+    .input-area { display: flex; padding: 10px 16px; background: var(--bg-sidebar); border-top: 1px solid var(--border); align-items: center; gap: 8px; }
     .input-area form { display: flex; flex: 1; gap: 8px; align-items: center; }
-    .input-area input[type="text"] {
-      flex: 1;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 20px;
-      background: #f0f0f0;
-      font-size: 1rem;
-      outline: none;
-    }
-    .attach-btn {
-      background: none;
-      border: none;
-      font-size: 1.6rem;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 50%;
-    }
+    .input-area input[type="text"] { flex: 1; padding: 10px 16px; border: none; border-radius: 20px; background: #f0f0f0; font-size: 1rem; outline: none; }
+    .attach-btn { background: none; border: none; font-size: 1.6rem; cursor: pointer; padding: 4px; border-radius: 50%; }
     .attach-btn:hover { background: #e0e0e0; }
-    .send-btn {
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      font-size: 1.3rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    .send-btn { background: var(--primary); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    .modal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      z-index: 1000;
-      width: 320px;
-    }
+    /* Просмотр фото в полном размере */
+    .lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; justify-content: center; align-items: center; }
+    .lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; }
+    .lightbox .close-lightbox { position: absolute; top: 20px; right: 30px; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; }
+
+    .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 1000; width: 320px; }
     .modal-close { position: absolute; right: 16px; top: 8px; cursor: pointer; font-size: 1.2rem; }
-    .profile-avatar-large {
-      width: 80px; height: 80px;
-      border-radius: 50%;
-      background: var(--primary);
-      margin: 0 auto 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 2rem;
-      overflow: hidden;
-    }
+    .profile-avatar-large { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; overflow: hidden; }
     .profile-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
     .profile-bio { color: var(--text-secondary); margin: 8px 0; }
 
-    /* Звонок */
-    .call-modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 2000;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
+    .call-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
     .videos { display: flex; gap: 10px; margin-bottom: 20px; }
-    .videos video {
-      width: 150px; height: 200px;
-      background: #000;
-      border-radius: 12px;
-      object-fit: cover;
-    }
-    .end-call-btn {
-      background: #ff4757;
-      color: white;
-      border: none;
-      padding: 12px 28px;
-      border-radius: 28px;
-      font-size: 1.1rem;
-      cursor: pointer;
-    }
+    .videos video { width: 150px; height: 200px; background: #000; border-radius: 12px; object-fit: cover; }
+    .end-call-btn { background: #ff4757; color: white; border: none; padding: 12px 28px; border-radius: 28px; font-size: 1.1rem; cursor: pointer; }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
     @media (max-width: 700px) {
       .app { flex-direction: column; }
       .sidebar { width: 100%; max-height: 38vh; }
@@ -348,7 +132,6 @@
 
 <div id="app-screen">
   <div class="app">
-    <!-- Сайдбар -->
     <div class="sidebar">
       <div class="search-bar"><input type="text" placeholder="Поиск..." disabled></div>
       <div class="tab-bar">
@@ -369,7 +152,7 @@
         <div style="text-align:center;margin:16px 0;">
           <div id="my-avatar-preview" class="profile-avatar-large" onclick="document.getElementById('avatar-upload').click()">😊</div>
           <input type="file" id="avatar-upload" accept="image/*" style="display:none">
-          <p style="font-size:0.8rem;">Нажми на аватар, чтобы изменить</p>
+          <p>Нажми на аватар, чтобы изменить</p>
         </div>
         <label>Ник: <strong id="profile-nick"></strong></label>
         <button id="change-nick-btn-profile" style="margin-left:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 12px;">Сменить</button>
@@ -392,7 +175,6 @@
       </div>
     </div>
 
-    <!-- Основной чат -->
     <div class="main">
       <div class="chat-header">
         <button class="back-btn" id="back-btn">←</button>
@@ -402,6 +184,14 @@
         <button id="call-log-btn" style="background:none;border:none;font-size:1.3rem;">📋</button>
       </div>
       <div class="messages" id="messages-container"></div>
+
+      <!-- Предпросмотр фото -->
+      <div class="preview-area" id="preview-area">
+        <img id="preview-image" src="" alt="preview">
+        <button class="remove-preview" id="remove-preview-btn">✕</button>
+        <span style="font-size:0.85rem;color:var(--text-secondary);">Фото</span>
+      </div>
+
       <div class="input-area">
         <input type="file" id="image-input" accept="image/*" style="display:none">
         <button class="attach-btn" id="attach-btn">📎</button>
@@ -412,6 +202,12 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Лайтбокс для просмотра фото -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="фото">
+  <button class="close-lightbox" onclick="closeLightbox()">✕</button>
 </div>
 
 <!-- Модальное окно профиля друга -->
@@ -447,11 +243,7 @@
   const rtcConfig = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
   };
 
@@ -460,6 +252,7 @@
   let currentChat = { target: 'general', isGroup: false };
   let userFriends = [], userGroups = [], allUsers = [];
   let localStream = null, peerConnection = null, currentCallPartner = null;
+  let selectedFile = null; // для предпросмотра
 
   // Аутентификация
   function showAuth() { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-screen').style.display = 'none'; }
@@ -553,7 +346,6 @@
     const headerTitle = document.getElementById('header-title');
     headerTitle.textContent = target === 'general' ? 'Общий чат' : target;
     document.getElementById('back-btn').style.display = (target !== 'general') ? 'flex' : 'none';
-    // Показываем кнопку звонка только если это личный чат с реальным пользователем (не AI, не группа)
     const callBtn = document.getElementById('header-call-btn');
     if (target !== 'general' && target !== 'ai-bot' && !isGroup && target !== myName) {
       callBtn.style.display = 'flex';
@@ -686,12 +478,36 @@
 
   document.getElementById('logout-btn').onclick = () => { localStorage.removeItem('authToken'); location.reload(); };
 
-  // Сообщения
-  document.getElementById('attach-btn').onclick = () => document.getElementById('image-input').click();
+  // ==== ПРЕДПРОСМОТР ФОТО + ОТПРАВКА ====
+  const imageInput = document.getElementById('image-input');
+  const previewArea = document.getElementById('preview-area');
+  const previewImage = document.getElementById('preview-image');
+  const removePreviewBtn = document.getElementById('remove-preview-btn');
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewImage.src = e.target.result;
+      previewArea.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removePreviewBtn.addEventListener('click', () => {
+    selectedFile = null;
+    imageInput.value = '';
+    previewArea.style.display = 'none';
+  });
+
+  document.getElementById('attach-btn').onclick = () => imageInput.click();
+
   document.getElementById('message-form').onsubmit = (e) => {
     e.preventDefault();
     const text = document.getElementById('msg-input').value.trim();
-    const file = document.getElementById('image-input').files[0];
+    const file = selectedFile;
     if (!text && !file) return;
     if (!currentChat) return;
 
@@ -709,13 +525,16 @@
       appendMessage(tempMsg, true, true);
       sendToServer({ text });
     }
+    // Очистка
     document.getElementById('msg-input').value = '';
-    document.getElementById('image-input').value = '';
+    selectedFile = null;
+    imageInput.value = '';
+    previewArea.style.display = 'none';
     document.getElementById('msg-input').focus();
   };
 
+  // ==== СООБЩЕНИЯ (с кликом по фото) ====
   function appendMessage(msg, isMine, isPending = false) {
-    // Удаляем все pending-версии с таким же текстом/автором
     if (!isPending) {
       document.querySelectorAll('.message.pending').forEach(el => {
         const elAuthor = el.querySelector('.author')?.textContent;
@@ -728,12 +547,45 @@
     const div = document.createElement('div');
     div.className = `message ${isMine ? 'mine' : 'other'}${isPending ? ' pending' : ''}`;
     let content = '';
-    if (msg.image) content += `<img src="${msg.image}" alt="фото">`;
+    if (msg.image) {
+      content += `<img src="${msg.image}" alt="фото" onclick="openLightbox('${msg.image}')">`;
+    }
     if (msg.text) content += `<span class="text">${msg.text}</span>`;
-    div.innerHTML = `<span class="author" data-username="${msg.author}" onclick="openProfileModal('${msg.author}')">${msg.author}</span> ${content} <span class="time">${msg.time}</span>`;
+    // Аватар автора рядом с ником
+    const authorAvatar = getAvatarForUser(msg.author);
+    div.innerHTML = `<img src="${authorAvatar}" class="user-avatar-inline" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px;"><span class="author" data-username="${msg.author}" onclick="openProfileModal('${msg.author}')">${msg.author}</span> ${content} <span class="time">${msg.time}</span>`;
     document.getElementById('messages-container').appendChild(div);
     document.getElementById('messages-container').scrollTop = document.getElementById('messages-container').scrollHeight;
   }
+
+  // Получение аватара для пользователя (из кэша allUsers или своего профиля)
+  function getAvatarForUser(username) {
+    if (username === '🤖 AI Друг') return '🤖';
+    const user = allUsers.find(u => u.name === username);
+    if (user && user.avatar) return user.avatar;
+    // если это сам пользователь, можно вернуть из загруженного профиля
+    if (username === myName) {
+      const myAvatarEl = document.getElementById('my-avatar-preview');
+      if (myAvatarEl) {
+        const img = myAvatarEl.querySelector('img');
+        if (img) return img.src;
+        return myAvatarEl.textContent.trim();
+      }
+    }
+    return username.charAt(0).toUpperCase();
+  }
+
+  // Лайтбокс
+  function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').style.display = 'flex';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLightbox();
+  });
 
   // Приём сообщений
   socket.on('general message', msg => { if (currentChat.target === 'general') appendMessage(msg, msg.author === myName, false); });
@@ -795,7 +647,7 @@
 
   socket.on('incoming-call', async ({ from, offer }) => {
     currentCallPartner = from;
-    if (!confirm(`📞 Входящий звонок от ${from}`)) { socket.emit('end-call', { to: from }); return; }
+    if (!confirm(` Входящий звонок от ${from}`)) { socket.emit('end-call', { to: from }); return; }
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
