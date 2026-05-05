@@ -165,6 +165,20 @@
       color: var(--primary);
       display: none;
     }
+    .call-btn-header {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: none;  /* показывается только в личных чатах */
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+    }
     .messages {
       flex: 1;
       padding: 20px 16px;
@@ -187,7 +201,15 @@
     .message.mine { align-self: flex-end; background: var(--msg-mine); border-bottom-right-radius: 4px; }
     .message.other { align-self: flex-start; background: var(--msg-other); border-bottom-left-radius: 4px; }
     .message.pending { opacity: 0.6; }
-    .message .author { font-size: 0.8rem; font-weight: 600; color: var(--primary); margin-bottom: 2px; display: block; }
+    .message .author {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 2px;
+      display: inline-block;
+      cursor: pointer;
+    }
+    .message .author:hover { text-decoration: underline; }
     .message .text { display: inline; }
     .message .time { font-size: 0.7rem; color: var(--text-secondary); float: right; margin-left: 8px; margin-top: 2px; }
     .message img { max-width: 200px; max-height: 200px; border-radius: 8px; display: block; margin-top: 4px; }
@@ -303,7 +325,6 @@
 </head>
 <body>
 
-<!-- ЭКРАН ВХОДА / РЕГИСТРАЦИИ -->
 <div id="auth-screen">
   <div class="auth-container">
     <div id="login-form">
@@ -325,9 +346,9 @@
   </div>
 </div>
 
-<!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
 <div id="app-screen">
   <div class="app">
+    <!-- Сайдбар -->
     <div class="sidebar">
       <div class="search-bar"><input type="text" placeholder="Поиск..." disabled></div>
       <div class="tab-bar">
@@ -340,7 +361,7 @@
       <div class="panel" id="contacts-panel">
         <div style="padding:10px 16px;font-weight:600;">Друзья</div>
         <div id="friends-list"></div>
-        <div style="padding:10px 16px;font-weight:600;">Все</div>
+        <div style="padding:10px 16px;font-weight:600;">Все пользователи</div>
         <div id="all-users-list"></div>
       </div>
       <div class="panel" id="profile-panel" style="padding:16px;">
@@ -371,10 +392,12 @@
       </div>
     </div>
 
+    <!-- Основной чат -->
     <div class="main">
       <div class="chat-header">
         <button class="back-btn" id="back-btn">←</button>
         <span id="header-title" style="font-weight:500;font-size:1.1rem;cursor:pointer;" onclick="openProfileModal(currentChat.target)">Общий чат</span>
+        <button class="call-btn-header" id="header-call-btn" onclick="startCall(currentChat.target)">📞</button>
         <span style="flex:1;"></span>
         <button id="call-log-btn" style="background:none;border:none;font-size:1.3rem;">📋</button>
       </div>
@@ -398,7 +421,7 @@
   <h3 id="profile-modal-name"></h3>
   <p class="profile-bio" id="profile-modal-bio"></p>
   <button id="profile-modal-action" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;">Добавить в друзья</button>
-  <button id="profile-modal-call" style="background:#34c759;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;display:none;">📞 Позвонить</button>
+  <button id="profile-modal-call" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;display:none;">📞 Позвонить</button>
 </div>
 
 <!-- Модальное окно смены ника -->
@@ -527,8 +550,16 @@
 
   function openChat(target, isGroup=false) {
     currentChat = { target, isGroup };
-    document.getElementById('header-title').textContent = target === 'general' ? 'Общий чат' : target;
+    const headerTitle = document.getElementById('header-title');
+    headerTitle.textContent = target === 'general' ? 'Общий чат' : target;
     document.getElementById('back-btn').style.display = (target !== 'general') ? 'flex' : 'none';
+    // Показываем кнопку звонка только если это личный чат с реальным пользователем (не AI, не группа)
+    const callBtn = document.getElementById('header-call-btn');
+    if (target !== 'general' && target !== 'ai-bot' && !isGroup && target !== myName) {
+      callBtn.style.display = 'flex';
+    } else {
+      callBtn.style.display = 'none';
+    }
     document.getElementById('messages-container').innerHTML = '';
     socket.emit('get-history', { target, isGroup });
   }
@@ -616,7 +647,6 @@
       addBtn.textContent = 'Добавить в друзья';
       addBtn.onclick = () => { socket.emit('add-friend', username); document.getElementById('profile-modal').style.display='none'; };
     }
-    // Показываем кнопку звонка, если это реальный пользователь (не AI)
     callBtn.style.display = 'inline-block';
     callBtn.onclick = () => { document.getElementById('profile-modal').style.display='none'; startCall(username); };
     document.getElementById('profile-modal').style.display = 'block';
@@ -685,6 +715,7 @@
   };
 
   function appendMessage(msg, isMine, isPending = false) {
+    // Удаляем все pending-версии с таким же текстом/автором
     if (!isPending) {
       document.querySelectorAll('.message.pending').forEach(el => {
         const elAuthor = el.querySelector('.author')?.textContent;
@@ -693,12 +724,13 @@
         if (elAuthor === msg.author && (elText === (msg.text||'') || (elImg && elImg.src === msg.image))) el.remove();
       });
     }
+
     const div = document.createElement('div');
     div.className = `message ${isMine ? 'mine' : 'other'}${isPending ? ' pending' : ''}`;
     let content = '';
     if (msg.image) content += `<img src="${msg.image}" alt="фото">`;
     if (msg.text) content += `<span class="text">${msg.text}</span>`;
-    div.innerHTML = `<span class="author">${msg.author}</span> ${content} <span class="time">${msg.time}</span>`;
+    div.innerHTML = `<span class="author" data-username="${msg.author}" onclick="openProfileModal('${msg.author}')">${msg.author}</span> ${content} <span class="time">${msg.time}</span>`;
     document.getElementById('messages-container').appendChild(div);
     document.getElementById('messages-container').scrollTop = document.getElementById('messages-container').scrollHeight;
   }
@@ -722,24 +754,17 @@
     if (document.getElementById('settings-panel').classList.contains('active')) renderSettings();
   });
   socket.on('users-update', users => { allUsers = users; if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts(); });
-  socket.on('avatar-updated', ({username}) => {
-    if (username === myName) loadMyProfile();
-  });
+  socket.on('avatar-updated', ({username}) => { if (username === myName) loadMyProfile(); });
 
-  // ================== ЗВОНКИ (исправлено) ==================
-  // Вызываем getUserMedia СИНХРОННО, чтобы не потерять контекст активации
-  function requestMedia() {
-    return navigator.mediaDevices.getUserMedia({video: true, audio: true});
-  }
-
+  // ================== ЗВОНКИ ==================
   async function startCall(username) {
+    if (username === myName) return;
     currentCallPartner = username;
-    // Сначала синхронно (в этом же обработчике) запрашиваем доступ
     let stream;
     try {
-      stream = await requestMedia(); // здесь выполняется сразу, контекст активации сохраняется
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     } catch (err) {
-      alert('Не удалось получить доступ к камере/микрофону');
+      alert('Не удалось получить доступ к камере/микрофону. Проверьте настройки браузера.');
       return;
     }
     localStream = stream;
@@ -747,13 +772,25 @@
     document.getElementById('call-modal').style.display = 'flex';
 
     peerConnection = new RTCPeerConnection(rtcConfig);
+    peerConnection.oniceconnectionstatechange = () => {
+      if (peerConnection.iceConnectionState === 'failed') {
+        alert('Соединение не удалось. Попробуйте позже.');
+        closeCall();
+      }
+    };
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
     peerConnection.onicecandidate = (event) => { if (event.candidate) socket.emit('ice-candidate', { to: currentCallPartner, candidate: event.candidate }); };
     peerConnection.ontrack = (event) => { document.getElementById('remote-video').srcObject = event.streams[0]; };
 
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit('call-user', { toId: currentCallPartner, offer });
+    try {
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('call-user', { toId: currentCallPartner, offer });
+    } catch (e) {
+      console.error(e);
+      alert('Ошибка при создании звонка.');
+      closeCall();
+    }
   }
 
   socket.on('incoming-call', async ({ from, offer }) => {
@@ -761,7 +798,7 @@
     if (!confirm(`📞 Входящий звонок от ${from}`)) { socket.emit('end-call', { to: from }); return; }
     let stream;
     try {
-      stream = await requestMedia(); // синхронно в ответе на пользовательское действие (confirm – это тоже действие)
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     } catch (err) {
       alert('Нет доступа к медиа');
       socket.emit('end-call', { to: from });
@@ -772,16 +809,29 @@
     document.getElementById('call-modal').style.display = 'flex';
 
     peerConnection = new RTCPeerConnection(rtcConfig);
+    peerConnection.oniceconnectionstatechange = () => {
+      if (peerConnection.iceConnectionState === 'failed') {
+        alert('Соединение не удалось.');
+        closeCall();
+      }
+    };
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
     peerConnection.onicecandidate = (event) => { if (event.candidate) socket.emit('ice-candidate', { to: currentCallPartner, candidate: event.candidate }); };
     peerConnection.ontrack = (event) => { document.getElementById('remote-video').srcObject = event.streams[0]; };
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    socket.emit('answer-call', { to: currentCallPartner, answer });
+
+    try {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('answer-call', { to: currentCallPartner, answer });
+    } catch (e) {
+      console.error(e);
+      alert('Ошибка при ответе на звонок.');
+      closeCall();
+    }
   });
 
-  socket.on('call-answered', async ({ answer }) => { await peerConnection.setRemoteDescription(new RTCSessionDescription(answer)); });
+  socket.on('call-answered', async ({ answer }) => { try { await peerConnection.setRemoteDescription(new RTCSessionDescription(answer)); } catch(e) {} });
   socket.on('ice-candidate', async ({ candidate }) => { if (peerConnection) try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {} });
   socket.on('call-ended', () => { closeCall(); });
 
@@ -795,10 +845,8 @@
   }
 
   document.getElementById('end-call-btn').onclick = () => { if (currentCallPartner) socket.emit('end-call', { to: currentCallPartner }); closeCall(); };
-
   document.getElementById('call-log-btn').onclick = () => alert('История звонков');
 
-  // Старт
   checkSession();
 </script>
 </body>
