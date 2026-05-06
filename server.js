@@ -69,9 +69,7 @@ function addNotification(username, text) {
   data.notifications[username].push(notif);
   saveData();
   const sockId = userSockets.get(username);
-  if (sockId) {
-    io.to(sockId).emit('new-notification', notif);
-  }
+  if (sockId) io.to(sockId).emit('new-notification', notif);
 }
 
 // ====== API ======
@@ -140,7 +138,7 @@ app.post('/api/update-profile', (req, res) => {
   if (description !== undefined) data.users[username].description = description;
   saveData();
   io.emit('avatar-updated', { username, avatar: data.users[username].avatar });
-  res.json({ success: true, avatar: data.users[username].avatar, description: data.users[username].description });
+  res.json({ success: true });
 });
 
 // Запросы на дружбу
@@ -179,16 +177,16 @@ app.post('/api/handle-friend-request', (req, res) => {
     request.status = 'accepted';
     data.users[request.from].friends.push(username);
     data.users[username].friends.push(request.from);
-    addNotification(request.from, `Ваша заявка в друзья была принята пользователем ${username}`);
+    addNotification(request.from, `Ваша заявка в друзья принята пользователем ${username}`);
   } else if (action === 'reject') {
     request.status = 'rejected';
-    addNotification(request.from, `Ваша заявка в друзья была отклонена пользователем ${username}`);
+    addNotification(request.from, `Ваша заявка в друзья отклонена пользователем ${username}`);
   }
   saveData();
   res.json({ success: true });
 });
 
-// ====== AI-друг ======
+// AI-друг
 const aiReplies = {
   "привет": ["Привет! Как у тебя дела?", "Приветик!", "Здравствуй!"],
   "как дела": ["У меня всё отлично! А у тебя?", "Супер!", "Хорошо, спасибо что спросил."],
@@ -212,7 +210,7 @@ function getAIReply(userText) {
   return randomPhrases[Math.floor(Math.random() * randomPhrases.length)];
 }
 
-// ====== Сокеты ======
+// Сокеты
 const onlineUsers = new Map();
 const userSockets = new Map();
 
@@ -249,7 +247,7 @@ io.on('connection', (socket) => {
 
     if (isGroup) {
       if (!data.groups[target]) return;
-      const msg = { author: sender, text: text || '', image: image || null, time, target: target, isGroup: true };
+      const msg = { author: sender, text: text || '', image: image || null, time, target, isGroup: true };
       data.groups[target].messages.push(msg);
       data.groups[target].members.forEach(member => {
         const sockId = userSockets.get(member);
@@ -265,7 +263,7 @@ io.on('connection', (socket) => {
       const chatKey = getPrivateKey(sender, 'ai-bot');
       if (!data.messages[chatKey]) data.messages[chatKey] = [];
       data.messages[chatKey].push(msg);
-      socket.emit('private message', msg);  // отправителю подтверждение
+      socket.emit('private message', msg);
       const aiReply = getAIReply(text);
       const aiMsg = {
         author: '🤖 AI Друг',
@@ -277,20 +275,17 @@ io.on('connection', (socket) => {
       data.messages[chatKey].push(aiMsg);
       socket.emit('private message', aiMsg);
     } else {
-      // Личное сообщение конкретному пользователю
       const receiver = target;
       const msg = { author: sender, text: text || '', image: image || null, time, target: receiver };
       const chatKey = getPrivateKey(sender, receiver);
       if (!data.messages[chatKey]) data.messages[chatKey] = [];
       data.messages[chatKey].push(msg);
-      // Отправляем получателю
       const recvSock = userSockets.get(receiver);
       if (recvSock) {
         io.to(recvSock).emit('private message', msg);
       } else {
         addNotification(receiver, `Новое личное сообщение от ${sender}`);
       }
-      // Отправляем отправителю для подтверждения
       socket.emit('private message', msg);
     }
     saveData();
@@ -323,9 +318,7 @@ io.on('connection', (socket) => {
     saveData();
     addNotification(to, `Пользователь ${from} хочет добавить вас в друзья`);
     const toSock = userSockets.get(to);
-    if (toSock) {
-      io.to(toSock).emit('friend-request-received', request);
-    }
+    if (toSock) io.to(toSock).emit('friend-request-received', request);
   });
 
   socket.on('respond-friend-request', ({ requestId, action }) => {
@@ -336,13 +329,13 @@ io.on('connection', (socket) => {
       request.status = 'accepted';
       data.users[request.from].friends.push(username);
       data.users[username].friends.push(request.from);
-      addNotification(request.from, `Ваша заявка в друзья была принята пользователем ${username}`);
+      addNotification(request.from, `Ваша заявка в друзья принята пользователем ${username}`);
     } else if (action === 'reject') {
       request.status = 'rejected';
-      addNotification(request.from, `Ваша заявка в друзья была отклонена пользователем ${username}`);
+      addNotification(request.from, `Ваша заявка в друзья отклонена пользователем ${username}`);
     }
     saveData();
-    // Обновить списки друзей
+    // Обновить данные у отправителя
     const fromSock = userSockets.get(request.from);
     if (fromSock) {
       io.to(fromSock).emit('user-data', {
@@ -352,6 +345,7 @@ io.on('connection', (socket) => {
         avatar: data.users[request.from].avatar || ''
       });
     }
+    // Обновить у получателя
     socket.emit('user-data', {
       name: username,
       friends: data.users[username].friends,
@@ -360,7 +354,31 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Звонки
+  // Группы
+  socket.on('create-group', (groupData) => {
+    const myName = onlineUsers.get(socket.id);
+    if (!myName) return;
+    const { name, members } = groupData;
+    if (!name || data.groups[name]) return;
+    if (!members || members.length === 0) return;
+    const allMembers = [myName, ...members.filter(m => m !== myName)];
+    data.groups[name] = { members: allMembers, messages: [] };
+    saveData();
+    // Оповещаем участников
+    allMembers.forEach(member => {
+      const sockId = userSockets.get(member);
+      if (sockId) {
+        io.to(sockId).emit('user-data', {
+          name: member,
+          friends: data.users[member]?.friends || [],
+          groups: getGroupsForUser(member),
+          avatar: data.users[member]?.avatar || ''
+        });
+      }
+    });
+  });
+
+  // Звонки (WebRTC)
   socket.on('call-user', ({ toId, offer }) => {
     const callerName = onlineUsers.get(socket.id) || 'Неизвестный';
     const receiverSocket = userSockets.get(toId);
@@ -384,25 +402,15 @@ io.on('connection', (socket) => {
   });
 });
 
-function getPrivateKey(a, b) {
-  return [a, b].sort().join(':');
-}
-
+function getPrivateKey(a, b) { return [a, b].sort().join(':'); }
 function broadcastUsersList() {
   const list = [{ id: 'ai-bot', name: ' AI Друг', isAI: true, avatar: '' }];
   onlineUsers.forEach((name, id) => {
     const user = data.users[name];
-    list.push({
-      id,
-      name,
-      isAI: false,
-      avatar: user?.avatar || '',
-      description: user?.description || ''
-    });
+    list.push({ id, name, isAI: false, avatar: user?.avatar || '', description: user?.description || '' });
   });
   io.emit('users-update', list);
 }
-
 function getGroupsForUser(userName) {
   const result = [];
   for (let groupName in data.groups) {
