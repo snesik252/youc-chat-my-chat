@@ -12,12 +12,13 @@ const io = new Server(server);
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static('public'));
 
-// ================== SUPABASE ==================
-const supabaseUrl = 'https://твой_проект.supabase.co'; // ← замени
-const supabaseKey = 'твой_service_role_key';           // ← замени
+// ====== Supabase ======
+// Вставь свои реальные ключи сюда или через переменные окружения Render
+const supabaseUrl = process.env.SUPABASE_URL || 'https://oafwaofiuczljckmxmko.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'твой_сервисный_ключ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// ================== ВСПОМОГАТЕЛЬНЫЕ ==================
+// ====== ВСПОМОГАТЕЛЬНЫЕ ======
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
@@ -41,13 +42,24 @@ async function addNotification(username, text) {
   }
 }
 
-// ================== АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ТАБЛИЦ ==================
-async function initDatabase() {
-  await supabase.rpc('init_tables'); // мы создадим эту функцию в Supabase (покажу ниже)
+// ====== АВТОМАТИЧЕСКОЕ СОЗДАНИЕ ТЕСТОВОГО АККАУНТА ======
+async function ensureTestAccount() {
+  const { data } = await supabase.from('users').select('*').eq('username', 'Алексей').single();
+  if (!data) {
+    const hash = bcrypt.hashSync('1234', 8);
+    await supabase.from('users').insert([{
+      username: 'Алексей',
+      passwordHash: hash,
+      friends: [],
+      groups: [],
+      avatar: '',
+      description: 'Тестовый аккаунт'
+    }]);
+    console.log('✅ Тестовый аккаунт Алексей / 1234 создан');
+  }
 }
-// initDatabase(); // раскомментируй после создания хранимой процедуры
 
-// ================== API ==================
+// ====== API ======
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -99,7 +111,7 @@ app.post('/api/update-profile', async (req, res) => {
   res.json({ success: true });
 });
 
-// Запросы в друзья
+// Друзья и заявки
 app.get('/api/friend-requests', async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.status(401).json({ error: 'Не авторизован' });
@@ -130,6 +142,7 @@ app.post('/api/handle-friend-request', async (req, res) => {
   if (!request || request.to !== username || request.status !== 'pending') return res.status(404).json({ error: 'Заявка не найдена' });
   if (action === 'accept') {
     await supabase.from('friend_requests').update({ status: 'accepted' }).eq('requestId', requestId);
+    // Обновляем друзей у обоих
     const { data: userFrom } = await supabase.from('users').select('friends').eq('username', request.from).single();
     const { data: userTo } = await supabase.from('users').select('friends').eq('username', username).single();
     userFrom.friends.push(username);
@@ -153,6 +166,7 @@ const aiReplies = {
   "спасибо": ["Пожалуйста!", "Не за что.", "Всегда к твоим услугам."]
 };
 const randomPhrases = ["Интересно!", "Расскажи подробнее.", "Согласен.", "Это круто!", "Улыбнись!", "Ты классный собеседник.", "Хорошая мысль."];
+
 function getAIReply(userText) {
   const clean = userText.trim().toLowerCase().replace(/[^а-яёa-z0-9 ]/g, '');
   for (let key in aiReplies) if (clean.includes(key)) return aiReplies[key][Math.floor(Math.random() * aiReplies[key].length)];
@@ -188,6 +202,7 @@ io.on('connection', (socket) => {
     broadcastUsersList();
   });
 
+  // Сообщения
   socket.on('chat message', async (msgData) => {
     const sender = onlineUsers.get(socket.id);
     if (!sender) return;
@@ -267,7 +282,6 @@ io.on('connection', (socket) => {
     } else {
       await supabase.from('friend_requests').update({ status: 'rejected' }).eq('requestId', requestId);
     }
-    // Обнови списки у сторон
     const fromSock = userSockets.get(request.from);
     if (fromSock) {
       const { data: fromUser } = await supabase.from('users').select('*').eq('username', request.from).single();
@@ -276,7 +290,7 @@ io.on('connection', (socket) => {
     socket.emit('user-data', { name: username, friends: userTo.friends, groups: userTo.groups, avatar: userTo.avatar });
   });
 
-  // Группы
+  // Группы (без RPC, чистый массив)
   socket.on('create-group', async (groupData) => {
     const myName = onlineUsers.get(socket.id);
     if (!myName) return;
@@ -284,18 +298,24 @@ io.on('connection', (socket) => {
     if (!name || members.length === 0) return;
     const allMembers = [myName, ...members.filter(m => m !== myName)];
     await supabase.from('groups').insert([{ name, members: allMembers }]);
-    await supabase.from('users').update({ groups: supabase.sql`array_append(groups, ${name})` }).eq('username', myName);
-    members.forEach(async (member) => {
-      await supabase.from('users').update({ groups: supabase.sql`array_append(groups, ${name})` }).eq('username', member);
-    });
-    // Обновить пользователей
-    allMembers.forEach(async (member) => {
+
+    // Обновляем поле groups у всех участников напрямую
+    for (const member of allMembers) {
+      const { data: user } = await supabase.from('users').select('groups').eq('username', member).single();
+      if (user) {
+        const updatedGroups = [...user.groups, name];
+        await supabase.from('users').update({ groups: updatedGroups }).eq('username', member);
+      }
+    }
+
+    // Оповещаем участников
+    for (const member of allMembers) {
       const sockId = userSockets.get(member);
       if (sockId) {
         const { data: user } = await supabase.from('users').select('*').eq('username', member).single();
         io.to(sockId).emit('user-data', { name: member, friends: user.friends, groups: user.groups, avatar: user.avatar });
       }
-    });
+    }
   });
 
   // WebRTC (без изменений)
@@ -327,5 +347,9 @@ async function broadcastUsersList() {
   io.emit('users-update', list);
 }
 
+// Запуск сервера
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Сервер запущен: http://localhost:${PORT}`));
+server.listen(PORT, async () => {
+  console.log(`Сервер запущен: http://localhost:${PORT}`);
+  await ensureTestAccount();
+});
