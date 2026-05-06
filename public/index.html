@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Мессенджер</title>
   <style>
+    /* Все стили остаются точно такими же, как в прошлом полном файле */
     :root {
       --primary: #2f80ed;
       --primary-light: #5b9cf5;
@@ -591,6 +592,7 @@
     let res = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     let data = await res.json();
     if (!res.ok) return showError(data.error);
+    // Автоматически входим после регистрации
     res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     data = await res.json();
     if (res.ok) {
@@ -624,12 +626,10 @@
     } catch(e) { showAuth(); }
   }
 
-  // 👇 ГЛАВНОЕ ИСПРАВЛЕНИЕ: перерегистрация при любом подключении
+  // 👇 Перерегистрация при переподключении сокета
   socket.on('connect', () => {
     if (myName) socket.emit('register', myName);
   });
-
-  socket.on('disconnect', () => {});
 
   // Тёмная тема
   const darkThemeToggle = document.getElementById('dark-theme-toggle');
@@ -734,8 +734,8 @@
           div.innerHTML = `
             <div class="avatar">${req.from.charAt(0)}</div>
             <div class="chat-name">${req.from}</div>
-            <button class="send-btn" style="width:auto;padding:0 8px;margin-left:auto;" onclick="respondRequest('${req.id}','accept')">✅</button>
-            <button class="send-btn" style="width:auto;padding:0 8px;background:#ff4757;" onclick="respondRequest('${req.id}','reject')">❌</button>
+            <button class="send-btn" style="width:auto;padding:0 8px;margin-left:auto;" onclick="respondRequest('${req.requestId}','accept')">✅</button>
+            <button class="send-btn" style="width:auto;padding:0 8px;background:#ff4757;" onclick="respondRequest('${req.requestId}','reject')">❌</button>
           `;
           list.appendChild(div);
         });
@@ -745,7 +745,7 @@
   function sendFriendRequest(to) { socket.emit('send-friend-request', to); alert('Заявка отправлена'); }
   function respondRequest(requestId, action) {
     socket.emit('respond-friend-request', { requestId, action });
-    currentFriendRequests = currentFriendRequests.filter(r => r.id !== requestId);
+    currentFriendRequests = currentFriendRequests.filter(r => r.requestId !== requestId);
     if (document.getElementById('requests-panel').classList.contains('active')) renderFriendRequests();
   }
 
