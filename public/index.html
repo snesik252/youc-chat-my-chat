@@ -371,14 +371,16 @@
     .image-overlay img {
       max-width: 95%;
       max-height: 95%;
-    }
-    .image-overlay .close-overlay {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      color: white;
-      font-size: 2rem;
+      transition: transform 0.2s;
       cursor: pointer;
+    }
+    .image-overlay img.zoomed {
+      max-width: none;
+      max-height: none;
+      width: auto;
+      height: auto;
+      position: absolute;
+      /* можно добавить перемещение, но просто зум */
     }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -423,6 +425,7 @@
         <button class="tab-btn active" data-tab="chats">💬</button>
         <button class="tab-btn" data-tab="contacts">👥</button>
         <button class="tab-btn" data-tab="requests">👋</button>
+        <button class="tab-btn" data-tab="groups">👪</button>
         <button class="tab-btn" data-tab="profile">👤</button>
         <button class="tab-btn" data-tab="settings">⚙️</button>
       </div>
@@ -436,6 +439,17 @@
       <div class="panel" id="requests-panel">
         <div style="padding:10px 16px;font-weight:600;color:var(--text-secondary);">Запросы в друзья</div>
         <div id="requests-list"></div>
+      </div>
+      <div class="panel" id="groups-panel">
+        <div style="padding:10px 16px;font-weight:600;color:var(--text-secondary);">Мои группы</div>
+        <div id="my-groups-list"></div>
+        <hr>
+        <div style="padding:10px 16px;font-weight:600;">Создать группу</div>
+        <div style="padding:0 16px;">
+          <input type="text" id="group-name-input" placeholder="Название группы" style="width:100%; padding:8px; margin-bottom:8px; border:1px solid var(--border); border-radius:8px; background:var(--bg-chat); color:var(--text);">
+          <div id="group-members-select" style="margin-bottom:8px;"></div>
+          <button id="create-group-btn" style="background:var(--primary); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; width:100%;">Создать</button>
+        </div>
       </div>
       <div class="panel" id="profile-panel" style="padding:16px;">
         <h3>Мой профиль</h3>
@@ -453,13 +467,7 @@
       </div>
       <div class="panel" id="settings-panel" style="padding:16px;">
         <p>Ник: <strong id="current-nick"></strong></p>
-        <button id="change-nick-btn-settings" style="background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;">Сменить ник</button>
-        <hr>
-        <div style="margin-top:12px;">
-          <input type="text" id="group-name-input" placeholder="Название группы">
-          <button id="create-group-btn" style="margin-top:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;">Создать группу</button>
-        </div>
-        <div id="group-members-select"></div>
+        <!-- смена ника из настроек убрана, она есть в профиле -->
         <hr>
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
           Тёмная тема <input type="checkbox" id="dark-theme-toggle">
@@ -506,7 +514,7 @@
   <button id="profile-modal-call" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;width:100%;display:none;">📞 Позвонить</button>
 </div>
 
-<!-- Модальное окно смены ника -->
+<!-- Модальное окно смены ника (используется из профиля) -->
 <div id="change-nick-modal" class="modal">
   <span class="modal-close" onclick="document.getElementById('change-nick-modal').style.display='none'">✕</span>
   <h3>Новый ник</h3>
@@ -526,7 +534,7 @@
 <!-- Полноэкранный просмотр фото -->
 <div class="image-overlay" id="image-overlay">
   <span class="close-overlay" onclick="closeImageOverlay()">&times;</span>
-  <img id="overlay-img" src="" alt="фото">
+  <img id="overlay-img" src="" alt="фото" onclick="toggleZoom()">
 </div>
 
 <!-- Модальное окно уведомлений -->
@@ -558,6 +566,7 @@
   let localStream = null, peerConnection = null, currentCallPartner = null;
   let currentFriendRequests = [];
   let pendingImageFile = null;
+  let overlayZoomed = false;
 
   // Аутентификация
   function showAuth() { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-screen').style.display = 'none'; }
@@ -644,6 +653,7 @@
       document.getElementById(tab+'-panel').classList.add('active');
       if (tab === 'contacts') renderContacts();
       if (tab === 'requests') renderFriendRequests();
+      if (tab === 'groups') renderGroupsPanel();
       if (tab === 'profile') loadMyProfile();
       if (tab === 'settings') renderSettings();
     });
@@ -739,6 +749,11 @@
 
   function respondRequest(requestId, action) {
     socket.emit('respond-friend-request', { requestId, action });
+    // Немедленно удаляем из локального списка
+    currentFriendRequests = currentFriendRequests.filter(r => r.id !== requestId);
+    if (document.getElementById('requests-panel').classList.contains('active')) {
+      renderFriendRequests();
+    }
   }
 
   // Уведомления
@@ -849,27 +864,54 @@
   // Настройки
   function renderSettings() {
     document.getElementById('current-nick').textContent = myName;
-    document.getElementById('group-members-select').innerHTML = '';
+    // группа уже в отдельной вкладке
+  }
+
+  // Группы
+  function renderGroupsPanel() {
+    // Отображаем список существующих групп
+    const myGroupsDiv = document.getElementById('my-groups-list');
+    myGroupsDiv.innerHTML = '';
+    if (userGroups.length === 0) {
+      myGroupsDiv.innerHTML = '<p style="padding:10px;color:var(--text-secondary);">Вы не состоите в группах</p>';
+    } else {
+      userGroups.forEach(group => {
+        const div = document.createElement('div');
+        div.className = 'chat-list-item';
+        div.innerHTML = `<div class="avatar">${group.charAt(0)}</div><div class="chat-name">${group}</div>`;
+        div.onclick = () => openChat(group, true);
+        myGroupsDiv.appendChild(div);
+      });
+    }
+
+    // Заполняем чекбоксы друзей для создания группы
+    const selectDiv = document.getElementById('group-members-select');
+    selectDiv.innerHTML = '';
     userFriends.forEach(friend => {
       const label = document.createElement('label');
       label.style.display = 'block';
       label.innerHTML = `<input type="checkbox" value="${friend}"> ${friend}`;
-      document.getElementById('group-members-select').appendChild(label);
+      selectDiv.appendChild(label);
     });
   }
 
   document.getElementById('create-group-btn').onclick = () => {
     const name = document.getElementById('group-name-input').value.trim();
-    if (!name) return;
+    if (!name) return alert('Введите название группы');
     const checks = document.querySelectorAll('#group-members-select input:checked');
     const members = Array.from(checks).map(cb => cb.value);
+    if (members.length === 0) return alert('Выберите хотя бы одного друга');
     socket.emit('create-group', { name, members });
     document.getElementById('group-name-input').value = '';
+    // Сбросим чекбоксы
+    document.querySelectorAll('#group-members-select input:checked').forEach(cb => cb.checked = false);
+    // После создания сервер пришлёт обновлённый user-data, и группа появится в списке
   };
 
-  document.getElementById('change-nick-btn-settings').onclick = () => showChangeNickModal();
-  document.getElementById('change-nick-btn-profile').onclick = () => showChangeNickModal();
-  function showChangeNickModal() { document.getElementById('change-nick-modal').style.display = 'block'; }
+  // Обработчик смены ника (только из профиля)
+  document.getElementById('change-nick-btn-profile').onclick = () => {
+    document.getElementById('change-nick-modal').style.display = 'block';
+  };
   document.getElementById('save-new-nick-btn').onclick = () => {
     const newNick = document.getElementById('new-nick-input').value.trim();
     if (!newNick) return;
@@ -959,9 +1001,21 @@
   function openImageOverlay(src) {
     document.getElementById('overlay-img').src = src;
     document.getElementById('image-overlay').style.display = 'flex';
+    overlayZoomed = false;
+    document.getElementById('overlay-img').classList.remove('zoomed');
   }
   function closeImageOverlay() {
     document.getElementById('image-overlay').style.display = 'none';
+  }
+  function toggleZoom() {
+    const img = document.getElementById('overlay-img');
+    if (!overlayZoomed) {
+      img.classList.add('zoomed');
+      overlayZoomed = true;
+    } else {
+      img.classList.remove('zoomed');
+      overlayZoomed = false;
+    }
   }
   document.getElementById('image-overlay').onclick = (e) => {
     if (e.target === document.getElementById('image-overlay')) closeImageOverlay();
@@ -973,7 +1027,6 @@
     if (currentChat.target === 'general') appendMessage(msg, msg.author === myName, false);
   });
   socket.on('private message', msg => {
-    // отображаем, если чат с отправителем или с получателем (AI-друг тоже)
     if (currentChat && (currentChat.target === msg.target || currentChat.target === msg.author)) {
       appendMessage(msg, msg.author === myName, false);
     }
@@ -996,6 +1049,7 @@
     renderChatList();
     if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts();
     if (document.getElementById('settings-panel').classList.contains('active')) renderSettings();
+    if (document.getElementById('groups-panel').classList.contains('active')) renderGroupsPanel();
   });
   socket.on('users-update', users => { allUsers = users; if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts(); });
   socket.on('avatar-updated', ({username}) => { if (username === myName) loadMyProfile(); });
