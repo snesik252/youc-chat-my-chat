@@ -380,7 +380,6 @@
       width: auto;
       height: auto;
       position: absolute;
-      /* можно добавить перемещение, но просто зум */
     }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -467,7 +466,6 @@
       </div>
       <div class="panel" id="settings-panel" style="padding:16px;">
         <p>Ник: <strong id="current-nick"></strong></p>
-        <!-- смена ника из настроек убрана, она есть в профиле -->
         <hr>
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;">
           Тёмная тема <input type="checkbox" id="dark-theme-toggle">
@@ -514,7 +512,7 @@
   <button id="profile-modal-call" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;width:100%;display:none;">📞 Позвонить</button>
 </div>
 
-<!-- Модальное окно смены ника (используется из профиля) -->
+<!-- Модальное окно смены ника -->
 <div id="change-nick-modal" class="modal">
   <span class="modal-close" onclick="document.getElementById('change-nick-modal').style.display='none'">✕</span>
   <h3>Новый ник</h3>
@@ -568,7 +566,7 @@
   let pendingImageFile = null;
   let overlayZoomed = false;
 
-  // Аутентификация
+  // ================== АВТОРИЗАЦИЯ ==================
   function showAuth() { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-screen').style.display = 'none'; }
   function showChat() { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('app-screen').style.display = 'block'; }
   function showError(msg) { document.getElementById('auth-error').textContent = msg; }
@@ -597,7 +595,7 @@
     data = await res.json();
     if (res.ok) {
       token = data.token; localStorage.setItem('authToken', token); myName = data.username;
-      socket.emit('register', myName); showChat();
+      showChat();
     } else showError(data.error);
   };
 
@@ -609,7 +607,7 @@
     let data = await res.json();
     if (!res.ok) return showError(data.error);
     token = data.token; localStorage.setItem('authToken', token); myName = data.username;
-    socket.emit('register', myName); showChat();
+    showChat();
   };
 
   async function checkSession() {
@@ -622,10 +620,16 @@
       notifications = data.notifications || [];
       userFriends = data.friends || [];
       updateNotificationBadge();
-      socket.emit('register', myName);
       showChat();
     } catch(e) { showAuth(); }
   }
+
+  // 👇 ГЛАВНОЕ ИСПРАВЛЕНИЕ: перерегистрация при любом подключении
+  socket.on('connect', () => {
+    if (myName) socket.emit('register', myName);
+  });
+
+  socket.on('disconnect', () => {});
 
   // Тёмная тема
   const darkThemeToggle = document.getElementById('dark-theme-toggle');
@@ -659,7 +663,6 @@
     });
   });
 
-  // Список чатов
   function renderChatList() {
     const list = document.getElementById('chat-list');
     list.innerHTML = '';
@@ -691,7 +694,6 @@
   }
   document.getElementById('back-btn').onclick = () => openChat('general', false);
 
-  // Контакты
   function renderContacts() {
     document.getElementById('friends-list').innerHTML = '';
     userFriends.forEach(friend => {
@@ -701,7 +703,6 @@
       el.onclick = () => openProfileModal(friend);
       document.getElementById('friends-list').appendChild(el);
     });
-
     document.getElementById('all-users-list').innerHTML = '';
     allUsers.forEach(user => {
       if (user.name === myName || user.isAI || userFriends.includes(user.name)) return;
@@ -716,7 +717,6 @@
     });
   }
 
-  // Запросы в друзья
   function renderFriendRequests() {
     fetch('/api/friend-requests', { headers: {authorization: token} })
       .then(res => res.json())
@@ -742,43 +742,29 @@
       });
   }
 
-  function sendFriendRequest(to) {
-    socket.emit('send-friend-request', to);
-    alert('Заявка отправлена');
-  }
-
+  function sendFriendRequest(to) { socket.emit('send-friend-request', to); alert('Заявка отправлена'); }
   function respondRequest(requestId, action) {
     socket.emit('respond-friend-request', { requestId, action });
-    // Немедленно удаляем из локального списка
     currentFriendRequests = currentFriendRequests.filter(r => r.id !== requestId);
-    if (document.getElementById('requests-panel').classList.contains('active')) {
-      renderFriendRequests();
-    }
+    if (document.getElementById('requests-panel').classList.contains('active')) renderFriendRequests();
   }
 
-  // Уведомления
   function updateNotificationBadge() {
     const unread = notifications.filter(n => !n.read).length;
     const badge = document.getElementById('notif-badge');
-    if (unread > 0) {
-      badge.style.display = 'flex';
-      badge.textContent = unread;
-    } else {
-      badge.style.display = 'none';
-    }
+    if (unread > 0) { badge.style.display = 'flex'; badge.textContent = unread; }
+    else { badge.style.display = 'none'; }
   }
 
   function showNotifications() {
     const list = document.getElementById('notifications-list');
     list.innerHTML = '';
-    if (notifications.length === 0) {
-      list.innerHTML = '<p style="color:var(--text-secondary);">Нет уведомлений</p>';
-    } else {
+    if (notifications.length === 0) list.innerHTML = '<p style="color:var(--text-secondary);">Нет уведомлений</p>';
+    else {
       notifications.slice().reverse().forEach(n => {
         const p = document.createElement('p');
         p.textContent = n.text + ' (' + n.time + ')';
         p.style.margin = '6px 0';
-        p.style.color = 'var(--text)';
         list.appendChild(p);
       });
     }
@@ -787,23 +773,16 @@
     updateNotificationBadge();
   }
 
-  socket.on('new-notification', (notif) => {
-    notifications.push(notif);
-    updateNotificationBadge();
-  });
+  socket.on('new-notification', (notif) => { notifications.push(notif); updateNotificationBadge(); });
 
-  // Профиль
   async function loadMyProfile() {
     let res = await fetch('/api/me', { headers: {authorization: token} });
     let data = await res.json();
     document.getElementById('profile-nick').textContent = data.username;
     document.getElementById('profile-description').value = data.description || '';
     const preview = document.getElementById('my-avatar-preview');
-    if (data.avatar) {
-      preview.innerHTML = `<img src="${data.avatar}" alt="avatar">`;
-    } else {
-      preview.innerHTML = data.username.charAt(0).toUpperCase();
-    }
+    if (data.avatar) preview.innerHTML = `<img src="${data.avatar}" alt="avatar">`;
+    else preview.innerHTML = data.username.charAt(0).toUpperCase();
   }
 
   document.getElementById('save-profile-btn').onclick = async () => {
@@ -819,12 +798,10 @@
     }
     const body = { description };
     if (avatarData) body.avatar = avatarData;
-    let res = await fetch('/api/update-profile', {
+    await fetch('/api/update-profile', {
       method:'POST', headers:{'Content-Type':'application/json','authorization':token}, body: JSON.stringify(body)
     });
-    let data = await res.json();
-    if (res.ok) { loadMyProfile(); alert('Профиль сохранён'); }
-    else alert(data.error || 'Ошибка');
+    loadMyProfile();
   };
 
   async function openProfileModal(username) {
@@ -841,50 +818,31 @@
     const areFriends = userFriends.includes(username);
     if (areFriends) {
       friendBtn.textContent = 'Удалить из друзей';
-      friendBtn.onclick = () => {
-        socket.emit('remove-friend', username);
-        document.getElementById('profile-modal').style.display='none';
-      };
+      friendBtn.onclick = () => { socket.emit('remove-friend', username); document.getElementById('profile-modal').style.display='none'; };
       callBtn.style.display = 'block';
       callBtn.onclick = () => { document.getElementById('profile-modal').style.display='none'; startCall(username); };
     } else {
       const pending = currentFriendRequests.find(r => r.from === username);
-      if (pending) {
-        friendBtn.textContent = 'Заявка уже отправлена';
-        friendBtn.disabled = true;
-      } else {
-        friendBtn.textContent = 'Отправить заявку';
-        friendBtn.onclick = () => { sendFriendRequest(username); document.getElementById('profile-modal').style.display='none'; };
-      }
+      if (pending) { friendBtn.textContent = 'Заявка уже отправлена'; friendBtn.disabled = true; }
+      else { friendBtn.textContent = 'Отправить заявку'; friendBtn.onclick = () => { sendFriendRequest(username); document.getElementById('profile-modal').style.display='none'; }; }
       callBtn.style.display = 'none';
     }
     document.getElementById('profile-modal').style.display = 'block';
   }
 
-  // Настройки
-  function renderSettings() {
-    document.getElementById('current-nick').textContent = myName;
-    // группа уже в отдельной вкладке
-  }
-
-  // Группы
   function renderGroupsPanel() {
-    // Отображаем список существующих групп
-    const myGroupsDiv = document.getElementById('my-groups-list');
-    myGroupsDiv.innerHTML = '';
+    document.getElementById('my-groups-list').innerHTML = '';
     if (userGroups.length === 0) {
-      myGroupsDiv.innerHTML = '<p style="padding:10px;color:var(--text-secondary);">Вы не состоите в группах</p>';
+      document.getElementById('my-groups-list').innerHTML = '<p style="padding:10px;color:var(--text-secondary);">Вы не состоите в группах</p>';
     } else {
       userGroups.forEach(group => {
         const div = document.createElement('div');
         div.className = 'chat-list-item';
         div.innerHTML = `<div class="avatar">${group.charAt(0)}</div><div class="chat-name">${group}</div>`;
         div.onclick = () => openChat(group, true);
-        myGroupsDiv.appendChild(div);
+        document.getElementById('my-groups-list').appendChild(div);
       });
     }
-
-    // Заполняем чекбоксы друзей для создания группы
     const selectDiv = document.getElementById('group-members-select');
     selectDiv.innerHTML = '';
     userFriends.forEach(friend => {
@@ -903,12 +861,9 @@
     if (members.length === 0) return alert('Выберите хотя бы одного друга');
     socket.emit('create-group', { name, members });
     document.getElementById('group-name-input').value = '';
-    // Сбросим чекбоксы
     document.querySelectorAll('#group-members-select input:checked').forEach(cb => cb.checked = false);
-    // После создания сервер пришлёт обновлённый user-data, и группа появится в списке
   };
 
-  // Обработчик смены ника (только из профиля)
   document.getElementById('change-nick-btn-profile').onclick = () => {
     document.getElementById('change-nick-modal').style.display = 'block';
   };
@@ -928,7 +883,6 @@
   const photoPreviewText = document.getElementById('photo-preview-text');
 
   document.getElementById('attach-btn').onclick = () => document.getElementById('image-input').click();
-
   document.getElementById('image-input').onchange = () => {
     const file = document.getElementById('image-input').files[0];
     if (!file) return;
@@ -956,7 +910,6 @@
     if (!currentChat) return;
 
     const tempMsg = { author: myName, text: text || '', image: null, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), pending: true };
-
     const sendToServer = (extra) => {
       socket.emit('chat message', { target: currentChat.target, isGroup: currentChat.isGroup, ...extra });
     };
@@ -987,7 +940,6 @@
         if (elAuthor === msg.author && (elText === (msg.text||'') || (elImg && elImg.src === msg.image))) el.remove();
       });
     }
-
     const div = document.createElement('div');
     div.className = `message ${isMine ? 'mine' : 'other'}${isPending ? ' pending' : ''}`;
     let content = '';
@@ -1004,38 +956,19 @@
     overlayZoomed = false;
     document.getElementById('overlay-img').classList.remove('zoomed');
   }
-  function closeImageOverlay() {
-    document.getElementById('image-overlay').style.display = 'none';
-  }
+  function closeImageOverlay() { document.getElementById('image-overlay').style.display = 'none'; }
   function toggleZoom() {
     const img = document.getElementById('overlay-img');
-    if (!overlayZoomed) {
-      img.classList.add('zoomed');
-      overlayZoomed = true;
-    } else {
-      img.classList.remove('zoomed');
-      overlayZoomed = false;
-    }
+    if (!overlayZoomed) { img.classList.add('zoomed'); overlayZoomed = true; }
+    else { img.classList.remove('zoomed'); overlayZoomed = false; }
   }
-  document.getElementById('image-overlay').onclick = (e) => {
-    if (e.target === document.getElementById('image-overlay')) closeImageOverlay();
-  };
+  document.getElementById('image-overlay').onclick = (e) => { if (e.target === document.getElementById('image-overlay')) closeImageOverlay(); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeImageOverlay(); });
 
   // Приём сообщений
-  socket.on('general message', msg => {
-    if (currentChat.target === 'general') appendMessage(msg, msg.author === myName, false);
-  });
-  socket.on('private message', msg => {
-    if (currentChat && (currentChat.target === msg.target || currentChat.target === msg.author)) {
-      appendMessage(msg, msg.author === myName, false);
-    }
-  });
-  socket.on('group message', data => {
-    if (currentChat && currentChat.target === data.group && currentChat.isGroup) {
-      appendMessage(data.msg, data.msg.author === myName, false);
-    }
-  });
+  socket.on('general message', msg => { if (currentChat.target === 'general') appendMessage(msg, msg.author === myName, false); });
+  socket.on('private message', msg => { if (currentChat && (currentChat.target === msg.target || currentChat.target === msg.author)) appendMessage(msg, msg.author === myName, false); });
+  socket.on('group message', data => { if (currentChat && currentChat.target === data.group && currentChat.isGroup) appendMessage(data.msg, data.msg.author === myName, false); });
   socket.on('chat-history', ({target, messages, isGroup}) => {
     if (currentChat && currentChat.target === target && currentChat.isGroup === isGroup) {
       document.getElementById('messages-container').innerHTML = '';
@@ -1048,7 +981,6 @@
     document.getElementById('current-nick').textContent = myName;
     renderChatList();
     if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts();
-    if (document.getElementById('settings-panel').classList.contains('active')) renderSettings();
     if (document.getElementById('groups-panel').classList.contains('active')) renderGroupsPanel();
   });
   socket.on('users-update', users => { allUsers = users; if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts(); });
@@ -1064,18 +996,16 @@
     localStream = stream;
     document.getElementById('local-video').srcObject = localStream;
     document.getElementById('call-modal').style.display = 'flex';
-
     peerConnection = new RTCPeerConnection(rtcConfig);
     peerConnection.oniceconnectionstatechange = () => { if (peerConnection.iceConnectionState === 'failed') { alert('Соединение не удалось.'); closeCall(); } };
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
     peerConnection.onicecandidate = (event) => { if (event.candidate) socket.emit('ice-candidate', { to: currentCallPartner, candidate: event.candidate }); };
     peerConnection.ontrack = (event) => { document.getElementById('remote-video').srcObject = event.streams[0]; };
-
     try {
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit('call-user', { toId: currentCallPartner, offer });
-    } catch (e) { console.error(e); alert('Ошибка при создании звонка.'); closeCall(); }
+    } catch (e) { console.error(e); closeCall(); }
   }
 
   socket.on('incoming-call', async ({ from, offer }) => {
@@ -1087,19 +1017,17 @@
     localStream = stream;
     document.getElementById('local-video').srcObject = localStream;
     document.getElementById('call-modal').style.display = 'flex';
-
     peerConnection = new RTCPeerConnection(rtcConfig);
     peerConnection.oniceconnectionstatechange = () => { if (peerConnection.iceConnectionState === 'failed') { alert('Соединение не удалось.'); closeCall(); } };
     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
     peerConnection.onicecandidate = (event) => { if (event.candidate) socket.emit('ice-candidate', { to: currentCallPartner, candidate: event.candidate }); };
     peerConnection.ontrack = (event) => { document.getElementById('remote-video').srcObject = event.streams[0]; };
-
     try {
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
       socket.emit('answer-call', { to: currentCallPartner, answer });
-    } catch (e) { console.error(e); alert('Ошибка при ответе на звонок.'); closeCall(); }
+    } catch (e) { console.error(e); closeCall(); }
   });
 
   socket.on('call-answered', async ({ answer }) => { try { await peerConnection.setRemoteDescription(new RTCSessionDescription(answer)); } catch(e) {} });
@@ -1114,7 +1042,6 @@
     document.getElementById('remote-video').srcObject = null;
     currentCallPartner = null;
   }
-
   document.getElementById('end-call-btn').onclick = () => { if (currentCallPartner) socket.emit('end-call', { to: currentCallPartner }); closeCall(); };
   document.getElementById('call-log-btn').onclick = () => alert('История звонков');
 
