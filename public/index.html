@@ -248,7 +248,7 @@
 
 <div id="app-screen">
   <div class="app">
-    <!-- сайдбар -->
+    <!-- Сайдбар -->
     <div class="sidebar">
       <div class="search-bar"><input type="text" placeholder="Поиск..." disabled></div>
       <div class="tab-bar">
@@ -306,7 +306,7 @@
       </div>
     </div>
 
-    <!-- основной чат -->
+    <!-- Основной чат -->
     <div class="main">
       <div class="chat-header">
         <button class="back-btn" id="back-btn">←</button>
@@ -333,7 +333,7 @@
   </div>
 </div>
 
-<!-- модалки (профиль, смена ника, звонок, просмотр фото, уведомления) -->
+<!-- Модальные окна (профиль, смена ника, звонок, просмотр фото, уведомления) -->
 <div id="profile-modal" class="modal">
   <span class="modal-close" onclick="document.getElementById('profile-modal').style.display='none'">✕</span>
   <div class="profile-avatar-large" id="profile-modal-avatar">A</div>
@@ -389,7 +389,7 @@
   let pendingImageFile = null;
   let overlayZoomed = false;
 
-  // === AUTH ===
+  // ================== АВТОРИЗАЦИЯ ==================
   function showAuth() { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-screen').style.display = 'none'; }
   function showChat() { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('app-screen').style.display = 'block'; }
   function showError(msg) { document.getElementById('auth-error').textContent = msg; }
@@ -405,16 +405,19 @@
     showError('');
   };
 
+  // 🟢 ИСПРАВЛЕННАЯ РЕГИСТРАЦИЯ (trim пароля)
   document.getElementById('register-btn').onclick = async () => {
     const username = document.getElementById('reg-username').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const password2 = document.getElementById('reg-password2').value;
+    const password = document.getElementById('reg-password').value.trim();
+    const password2 = document.getElementById('reg-password2').value.trim();
     if (!username || !password) return showError('Заполните все поля');
     if (password !== password2) return showError('Пароли не совпадают');
+
     let res = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     let data = await res.json();
     if (!res.ok) return showError(data.error);
-    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Автоматический вход после регистрации
     res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     data = await res.json();
     if (res.ok) {
@@ -424,13 +427,16 @@
     } else showError(data.error || 'Ошибка входа после регистрации');
   };
 
+  // 🟢 ИСПРАВЛЕННЫЙ ВХОД (trim пароля + register)
   document.getElementById('login-btn').onclick = async () => {
     const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
+    const password = document.getElementById('login-password').value.trim();
     if (!username || !password) return showError('Заполните все поля');
+
     let res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     let data = await res.json();
     if (!res.ok) return showError(data.error);
+
     token = data.token; localStorage.setItem('authToken', token); myName = data.username;
     socket.emit('register', myName);
     showChat();
@@ -453,7 +459,7 @@
 
   socket.on('connect', () => { if (myName) socket.emit('register', myName); });
 
-  // === ТЁМНАЯ ТЕМА ===
+  // Тёмная тема
   const darkThemeToggle = document.getElementById('dark-theme-toggle');
   if (localStorage.getItem('darkTheme') === 'true') {
     document.documentElement.classList.add('dark-theme');
@@ -469,7 +475,7 @@
     }
   };
 
-  // === ВКЛАДКИ ===
+  // Вкладки
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
@@ -571,7 +577,6 @@
     if (unread > 0) { badge.style.display = 'flex'; badge.textContent = unread; }
     else badge.style.display = 'none';
   }
-
   function showNotifications() {
     const list = document.getElementById('notifications-list');
     list.innerHTML = '';
@@ -598,7 +603,6 @@
     if (data.avatar) preview.innerHTML = `<img src="${data.avatar}" alt="avatar">`;
     else preview.innerHTML = data.username.charAt(0).toUpperCase();
   }
-
   document.getElementById('save-profile-btn').onclick = async () => {
     const description = document.getElementById('profile-description').value;
     const avatarFile = document.getElementById('avatar-upload').files[0];
@@ -683,7 +687,7 @@
 
   document.getElementById('logout-btn').onclick = () => { localStorage.removeItem('authToken'); location.reload(); };
 
-  // отправка сообщений и фото
+  // Отправка сообщений и фото
   const photoPreviewBar = document.getElementById('photo-preview-bar');
   const photoPreviewImg = document.getElementById('photo-preview-img');
   const photoPreviewText = document.getElementById('photo-preview-text');
@@ -769,7 +773,7 @@
   document.getElementById('image-overlay').onclick = (e) => { if (e.target === document.getElementById('image-overlay')) closeImageOverlay(); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeImageOverlay(); });
 
-  // приём сообщений
+  // Приём сообщений
   socket.on('general message', msg => { if (currentChat.target === 'general') appendMessage(msg, msg.author === myName, false); });
   socket.on('private message', msg => { if (currentChat && (currentChat.target === msg.target || currentChat.target === msg.author)) appendMessage(msg, msg.author === myName, false); });
   socket.on('group message', data => { if (currentChat && currentChat.target === data.group && currentChat.isGroup) appendMessage(data.msg, data.msg.author === myName, false); });
@@ -790,7 +794,7 @@
   socket.on('users-update', users => { allUsers = users; if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts(); });
   socket.on('avatar-updated', ({username}) => { if (username === myName) loadMyProfile(); });
 
-  // звонки WebRTC
+  // Звонки WebRTC
   async function startCall(username) {
     if (username === myName) return;
     currentCallPartner = username;
