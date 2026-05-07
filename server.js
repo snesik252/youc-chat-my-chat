@@ -12,7 +12,7 @@ const io = new Server(server);
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static('public'));
 
-// ====== SUPABASE ======
+// ====== SUPABASE (ключ вставлен) ======
 const supabaseUrl = process.env.SUPABASE_URL || 'https://oafwaofiuczljckmxmko.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hZndhb2ZpdWN6bGpja214bWtvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODA2NTYwNCwiZXhwIjoyMDkzNjQxNjA0fQ.ZItQzDwbrZaXyfCs_y5ZuMgDrvwBObBzIK6JB4DjnI4';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -26,7 +26,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
 
-// Тестовый аккаунт
+// Гарантированное создание тестового аккаунта
 async function ensureTestAccount() {
   const correctHash = bcrypt.hashSync('1234', 8);
   const { error } = await supabase.from('users').upsert([
@@ -221,7 +221,7 @@ io.on('connection', (socket) => {
       await supabase.from('messages').insert([msg]);
       socket.emit('private message', msg);
       const aiReply = getAIReply(text);
-      const aiMsg = { chatKey, author: '🤖 AI Друг', text: aiReply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), target: sender, fromAI: true };
+      const aiMsg = { chatKey, author: ' AI Друг', text: aiReply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), target: sender, fromAI: true };
       await supabase.from('messages').insert([aiMsg]);
       socket.emit('private message', aiMsg);
     } else {
@@ -302,7 +302,6 @@ io.on('connection', (socket) => {
     await supabase.from('messages').update({ target: finalName }).eq('target', oldName);
     await supabase.from('friend_requests').update({ from: finalName }).eq('from', oldName);
     await supabase.from('friend_requests').update({ to: finalName }).eq('to', oldName);
-    await supabase.from('groups').update({ members: supabase.raw(`array_replace(members, '${oldName}', '${finalName}')`) }).eq('members', '{}');
     onlineUsers.set(socket.id, finalName);
     userSockets.delete(oldName);
     userSockets.set(finalName, socket.id);
