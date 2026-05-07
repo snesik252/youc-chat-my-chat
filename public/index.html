@@ -333,7 +333,7 @@
   </div>
 </div>
 
-<!-- Модальные окна (профиль, смена ника, звонок, просмотр фото, уведомления) -->
+<!-- Модальные окна -->
 <div id="profile-modal" class="modal">
   <span class="modal-close" onclick="document.getElementById('profile-modal').style.display='none'">✕</span>
   <div class="profile-avatar-large" id="profile-modal-avatar">A</div>
@@ -389,7 +389,7 @@
   let pendingImageFile = null;
   let overlayZoomed = false;
 
-  // ================== АВТОРИЗАЦИЯ ==================
+  // === AUTH ===
   function showAuth() { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-screen').style.display = 'none'; }
   function showChat() { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('app-screen').style.display = 'block'; }
   function showError(msg) { document.getElementById('auth-error').textContent = msg; }
@@ -405,7 +405,7 @@
     showError('');
   };
 
-  // 🟢 ИСПРАВЛЕННАЯ РЕГИСТРАЦИЯ (trim пароля)
+  // 👇 ИСПРАВЛЕННАЯ РЕГИСТРАЦИЯ (trim + автоматический вход)
   document.getElementById('register-btn').onclick = async () => {
     const username = document.getElementById('reg-username').value.trim();
     const password = document.getElementById('reg-password').value.trim();
@@ -417,7 +417,7 @@
     let data = await res.json();
     if (!res.ok) return showError(data.error);
 
-    // Автоматический вход после регистрации
+    // автоматический вход
     res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     data = await res.json();
     if (res.ok) {
@@ -427,7 +427,7 @@
     } else showError(data.error || 'Ошибка входа после регистрации');
   };
 
-  // 🟢 ИСПРАВЛЕННЫЙ ВХОД (trim пароля + register)
+  // 👇 ИСПРАВЛЕННЫЙ ВХОД (trim + register)
   document.getElementById('login-btn').onclick = async () => {
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
