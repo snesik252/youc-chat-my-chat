@@ -14,14 +14,14 @@ app.use(express.static('public'));
 
 // ====== SUPABASE ======
 const supabaseUrl = process.env.SUPABASE_URL || 'https://oafwaofiuczljckmxmko.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'твой_сервисный_ключ';
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hZndhb2ZpdWN6bGpja214bWtvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODA2NTYwNCwiZXhwIjoyMDkzNjQxNjA0fQ.ZItQzDwbrZaXyfCs_y5ZuMgDrvwBObBzIK6JB4DjnI4';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Проверка подключения
 (async () => {
   const { error } = await supabase.from('users').select('username').limit(1);
-  if (error) console.error('❌ Supabase error:', error.message);
-  else console.log('✅ Supabase подключена');
+  if (error) console.error(' Supabase error:', error.message);
+  else console.log(' Supabase подключена');
 })();
 
 function generateToken() { return crypto.randomBytes(32).toString('hex'); }
@@ -32,8 +32,8 @@ async function ensureTestAccount() {
   const { error } = await supabase.from('users').upsert([
     { username: 'Алексей', passwordHash: correctHash, friends: [], groups: [], avatar: '', description: 'Тестовый аккаунт' }
   ], { onConflict: 'username' });
-  if (error) console.error('❌ Ошибка аккаунта:', error.message);
-  else console.log('✅ Тестовый аккаунт готов');
+  if (error) console.error(' Ошибка аккаунта:', error.message);
+  else console.log(' Тестовый аккаунт готов');
 }
 
 // ====== API ======
@@ -47,7 +47,7 @@ app.post('/api/register', async (req, res) => {
     await supabase.from('users').insert([{
       username, passwordHash: bcrypt.hashSync(password, 8), friends: [], groups: [], avatar: '', description: ''
     }]);
-    console.log(`✅ Зарегистрирован: ${username}`);
+    console.log(` Зарегистрирован: ${username}`);
     res.json({ success: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
@@ -58,19 +58,19 @@ app.post('/api/login', async (req, res) => {
     const password = req.body.password?.trim();
     if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
 
-    console.log(`🔐 Вход: ${username}`);
+    console.log(` Вход: ${username}`);
     const { data: user, error } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
     if (error) { console.error(error); return res.status(500).json({ error: 'Ошибка базы данных' }); }
-    if (!user) { console.log('❌ Пользователь не найден'); return res.status(401).json({ error: 'Неверный ник или пароль' }); }
+    if (!user) { console.log(' Пользователь не найден'); return res.status(401).json({ error: 'Неверный ник или пароль' }); }
 
     if (!bcrypt.compareSync(password, user.passwordHash)) {
-      console.log('❌ Пароль не совпадает');
+      console.log(' Пароль не совпадает');
       return res.status(401).json({ error: 'Неверный ник или пароль' });
     }
 
     const token = generateToken();
     await supabase.from('sessions').insert([{ token, username }]);
-    console.log(`✅ Вошёл: ${username}`);
+    console.log(` Вошёл: ${username}`);
     res.json({ token, username });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка сервера' }); }
 });
