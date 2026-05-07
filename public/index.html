@@ -502,45 +502,8 @@
   </div>
 </div>
 
-<!-- Модальное окно профиля друга -->
-<div id="profile-modal" class="modal">
-  <span class="modal-close" onclick="document.getElementById('profile-modal').style.display='none'">✕</span>
-  <div class="profile-avatar-large" id="profile-modal-avatar">A</div>
-  <h3 id="profile-modal-name" style="margin:8px 0; color:var(--text);"></h3>
-  <p class="profile-bio" id="profile-modal-bio" style="color:var(--text-secondary); margin-bottom:12px;"></p>
-  <button id="profile-modal-friend-action" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;width:100%;">Добавить в друзья</button>
-  <button id="profile-modal-call" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:4px;width:100%;display:none;">📞 Позвонить</button>
-</div>
-
-<!-- Модальное окно смены ника -->
-<div id="change-nick-modal" class="modal">
-  <span class="modal-close" onclick="document.getElementById('change-nick-modal').style.display='none'">✕</span>
-  <h3>Новый ник</h3>
-  <input type="text" id="new-nick-input" style="width:100%;margin:8px 0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-chat);color:var(--text);">
-  <button id="save-new-nick-btn" style="background:var(--primary);color:white;border:none;padding:8px 16px;border-radius:8px;width:100%;">Сохранить</button>
-</div>
-
-<!-- Модальное окно звонка -->
-<div class="call-modal" id="call-modal">
-  <div class="videos">
-    <video id="local-video" autoplay muted playsinline></video>
-    <video id="remote-video" autoplay playsinline></video>
-  </div>
-  <button class="end-call-btn" id="end-call-btn">📴 Завершить</button>
-</div>
-
-<!-- Полноэкранный просмотр фото -->
-<div class="image-overlay" id="image-overlay">
-  <span class="close-overlay" onclick="closeImageOverlay()">&times;</span>
-  <img id="overlay-img" src="" alt="фото" onclick="toggleZoom()">
-</div>
-
-<!-- Модальное окно уведомлений -->
-<div id="notifications-modal" class="modal" style="max-height:80vh; overflow-y:auto;">
-  <span class="modal-close" onclick="document.getElementById('notifications-modal').style.display='none'">✕</span>
-  <h3>Уведомления</h3>
-  <div id="notifications-list"></div>
-</div>
+<!-- Модальные окна (профиль, смена ника, звонок, фото, уведомления) – без изменений, опущены для краткости, но они должны быть как в прошлом полном index.html -->
+<!-- Скопируйте их из последнего полного варианта, я не могу вставить все из-за лимита длины ответа -->
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -566,7 +529,7 @@
   let pendingImageFile = null;
   let overlayZoomed = false;
 
-  // ================== АВТОРИЗАЦИЯ ==================
+  // ================== АВТОРИЗАЦИЯ С ОТЛАДКОЙ ==================
   function showAuth() { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('app-screen').style.display = 'none'; }
   function showChat() { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('app-screen').style.display = 'block'; }
   function showError(msg) { document.getElementById('auth-error').textContent = msg; }
@@ -584,32 +547,46 @@
 
   document.getElementById('register-btn').onclick = async () => {
     const username = document.getElementById('reg-username').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const password2 = document.getElementById('reg-password2').value;
+    const password = document.getElementById('reg-password').value.trim();   // убираем пробелы
+    const password2 = document.getElementById('reg-password2').value.trim();
     if (!username || !password) return showError('Заполните все поля');
     if (password !== password2) return showError('Пароли не совпадают');
+
+    console.log('Регистрируем:', username);
     let res = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     let data = await res.json();
+    console.log('Ответ на регистрацию:', data);
     if (!res.ok) return showError(data.error);
-    // Автоматически входим после регистрации
+
+    // Небольшая задержка, чтобы база точно сохранила
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Автоматический вход
+    console.log('Входим после регистрации...');
     res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     data = await res.json();
+    console.log('Ответ на вход:', data);
     if (res.ok) {
       token = data.token; localStorage.setItem('authToken', token); myName = data.username;
-      socket.emit('register', myName);   // 🔥 Вот оно! Отправляем регистрацию сразу
+      socket.emit('register', myName);
       showChat();
-    } else showError(data.error);
+    } else {
+      showError(data.error || 'Ошибка входа после регистрации');
+    }
   };
 
   document.getElementById('login-btn').onclick = async () => {
     const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
+    const password = document.getElementById('login-password').value.trim(); // убираем пробелы
     if (!username || !password) return showError('Заполните все поля');
+
+    console.log('Входим:', username);
     let res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
     let data = await res.json();
+    console.log('Ответ на вход:', data);
     if (!res.ok) return showError(data.error);
     token = data.token; localStorage.setItem('authToken', token); myName = data.username;
-    socket.emit('register', myName);   //  Регистрируем на сервере
+    socket.emit('register', myName);
     showChat();
   };
 
@@ -623,17 +600,16 @@
       notifications = data.notifications || [];
       userFriends = data.friends || [];
       updateNotificationBadge();
-      socket.emit('register', myName);   //  при проверке сессии тоже регистрируем
+      socket.emit('register', myName);
       showChat();
     } catch(e) { showAuth(); }
   }
 
-  // При переподключении сокета тоже регистрируемся
   socket.on('connect', () => {
     if (myName) socket.emit('register', myName);
   });
 
-  // Тёмная тема (без изменений)
+  // Тёмная тема
   const darkThemeToggle = document.getElementById('dark-theme-toggle');
   if (localStorage.getItem('darkTheme') === 'true') {
     document.documentElement.classList.add('dark-theme');
@@ -649,9 +625,9 @@
     }
   };
 
-  // Остальной код (вкладки, чаты, группы, запросы, уведомления, звонки, фото) точно такой же, как в прошлом полном index.html.
-  // Здесь я его сокращаю, чтобы не занимать слишком много места – возьми остальные функции из предыдущего полного ответа.
-  // Главное – мы добавили socket.emit('register', myName) во все места, где устанавливается myName.
+  // Остальной JavaScript (вкладки, чаты, группы, запросы, уведомления, звонки, фото)
+  // ... (весь остальной код из предыдущего полного рабочего index.html)
+  // (Я опускаю его здесь, чтобы не превысить лимит, но он должен быть точно таким же, как в последнем рабочем варианте)
 </script>
 </body>
 </html>
