@@ -17,97 +17,72 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://oafwaofiuczljckmxmko.su
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'ваш_сервисный_ключ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Проверка подключения к Supabase при старте
+// Проверка подключения
 (async () => {
-  try {
-    const { data, error } = await supabase.from('users').select('username').limit(1);
-    if (error) throw error;
-    console.log('✅ Подключение к Supabase успешно');
-  } catch (err) {
-    console.error('❌ Ошибка подключения к Supabase:', err.message);
-  }
+  const { error } = await supabase.from('users').select('username').limit(1);
+  if (error) console.error('❌ Supabase error:', error.message);
+  else console.log('✅ Supabase подключена');
 })();
 
-// Вспомогательные функции
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
 async function getUserByToken(token) {
-  try {
-    const { data } = await supabase.from('sessions').select('username').eq('token', token).single();
-    return data?.username || null;
-  } catch (e) {
-    console.error('getUserByToken error:', e.message);
-    return null;
-  }
+  const { data } = await supabase.from('sessions').select('username').eq('token', token).maybeSingle();
+  return data?.username || null;
 }
 
-// ГАРАНТИРОВАННОЕ СОЗДАНИЕ/ОБНОВЛЕНИЕ ТЕСТОВОГО АККАУНТА
+// Тестовый аккаунт
 async function ensureTestAccount() {
-  try {
-    const correctHash = bcrypt.hashSync('1234', 8);
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ passwordHash: correctHash })
-      .eq('username', 'Алексей');
-
-    if (updateError) {
-      const { error: insertError } = await supabase.from('users').insert([{
-        username: 'Алексей',
-        passwordHash: correctHash,
-        friends: [],
-        groups: [],
-        avatar: '',
-        description: 'Тестовый аккаунт'
-      }]);
-      if (insertError) {
-        console.error('❌ Не удалось создать тестовый аккаунт:', insertError.message);
-      } else {
-        console.log('✅ Тестовый аккаунт Алексей / 1234 создан');
-      }
-    } else {
-      console.log('✅ Хеш пароля для Алексея обновлён');
-    }
-  } catch (err) {
-    console.error('❌ ensureTestAccount error:', err.message);
+  const { data } = await supabase.from('users').select('*').eq('username', 'Алексей').maybeSingle();
+  if (!data) {
+    await supabase.from('users').insert([{
+      username: 'Алексей',
+      passwordHash: bcrypt.hashSync('1234', 8),
+      friends: [],
+      groups: [],
+      avatar: '',
+      description: 'Тестовый аккаунт'
+    }]);
+    console.log('✅ Аккаунт Алексей создан');
   }
 }
 
-// ================== API ==================
+// API
 app.post('/api/register', async (req, res) => {
   try {
-    let { username, password } = req.body;
-    username = username.trim();
-    password = password.trim();
+    const username = req.body.username?.trim();
+    const password = req.body.password?.trim();
     if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
 
-    const { data: existing } = await supabase.from('users').select('*').eq('username', username).single();
-    if (existing) return res.status(400).json({ error: 'Пользователь уже существует' });
+    const { data: existingUser } = await supabase.from('users').select('username').eq('username', username).maybeSingle();
+    if (existingUser) return res.status(400).json({ error: 'Пользователь уже существует' });
 
-    const passwordHash = bcrypt.hashSync(password, 8);
-    await supabase.from('users').insert([{ username, passwordHash, friends: [], groups: [], avatar: '', description: '' }]);
+    await supabase.from('users').insert([{
+      username,
+      passwordHash: bcrypt.hashSync(password, 8),
+      friends: [],
+      groups: [],
+      avatar: '',
+      description: ''
+    }]);
     console.log(`✅ Зарегистрирован: ${username}`);
     res.json({ success: true });
-  } catch (err) {
-    console.error('/api/register error:', err.message);
+  } catch (e) {
+    console.error('Register error:', e);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
 app.post('/api/login', async (req, res) => {
   try {
-    let { username, password } = req.body;
-    username = username.trim();
-    password = password.trim();
+    const username = req.body.username?.trim();
+    const password = req.body.password?.trim();
+    if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
 
     console.log(`🔐 Попытка входа: ${username}`);
-    if (!username || !password) {
-      console.log('❌ Пустые поля');
-      return res.status(400).json({ error: 'Заполните все поля' });
-    }
-
-    const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
+    const { data: user, error } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
     if (error) {
       console.error('❌ Supabase error:', error.message);
       return res.status(500).json({ error: 'Ошибка базы данных' });
@@ -117,8 +92,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Неверный ник или пароль' });
     }
 
-    const passwordMatch = bcrypt.compareSync(password, user.passwordHash);
-    if (!passwordMatch) {
+    if (!bcrypt.compareSync(password, user.passwordHash)) {
       console.log(`❌ Пароль для ${username} не совпадает`);
       return res.status(401).json({ error: 'Неверный ник или пароль' });
     }
@@ -127,8 +101,8 @@ app.post('/api/login', async (req, res) => {
     await supabase.from('sessions').insert([{ token, username }]);
     console.log(`✅ Успешный вход: ${username}`);
     res.json({ token, username });
-  } catch (err) {
-    console.error('/api/login error:', err.message);
+  } catch (e) {
+    console.error('Login error:', e);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -138,13 +112,14 @@ app.get('/api/me', async (req, res) => {
   if (!token) return res.status(401).json({ error: 'Не авторизован' });
   const username = await getUserByToken(token);
   if (!username) return res.status(401).json({ error: 'Не авторизован' });
-  const { data: user } = await supabase.from('users').select('*').eq('username', username).single();
+  const { data: user } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   const { data: notifications } = await supabase.from('notifications').select('*').eq('username', username);
   res.json({ username: user.username, avatar: user.avatar, description: user.description, friends: user.friends, notifications });
 });
 
 app.get('/api/user/:username', async (req, res) => {
-  const { data: user } = await supabase.from('users').select('*').eq('username', req.params.username).single();
+  const { data: user } = await supabase.from('users').select('*').eq('username', req.params.username).maybeSingle();
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   res.json({ username: user.username, avatar: user.avatar, description: user.description, friends: user.friends });
 });
@@ -178,10 +153,10 @@ app.post('/api/send-friend-request', async (req, res) => {
   if (!token) return res.status(401).json({ error: 'Не авторизован' });
   const from = await getUserByToken(token);
   const { to } = req.body;
-  const { data: userFrom } = await supabase.from('users').select('friends').eq('username', from).single();
+  const { data: userFrom } = await supabase.from('users').select('friends').eq('username', from).maybeSingle();
+  if (!userFrom) return res.status(404).json({ error: 'Пользователь не найден' });
   if (userFrom.friends.includes(to)) return res.status(400).json({ error: 'Вы уже друзья' });
   await supabase.from('friend_requests').insert([{ requestId: Date.now().toString(), from, to, status: 'pending' }]);
-  // уведомление будет отправлено через сокеты, но можно и через API, но проще оставить как было
   res.json({ success: true });
 });
 
@@ -190,16 +165,18 @@ app.post('/api/handle-friend-request', async (req, res) => {
   if (!token) return res.status(401).json({ error: 'Не авторизован' });
   const username = await getUserByToken(token);
   const { requestId, action } = req.body;
-  const { data: request } = await supabase.from('friend_requests').select('*').eq('requestId', requestId).single();
+  const { data: request } = await supabase.from('friend_requests').select('*').eq('requestId', requestId).maybeSingle();
   if (!request || request.to !== username || request.status !== 'pending') return res.status(404).json({ error: 'Заявка не найдена' });
   if (action === 'accept') {
     await supabase.from('friend_requests').update({ status: 'accepted' }).eq('requestId', requestId);
-    const { data: userFrom } = await supabase.from('users').select('friends').eq('username', request.from).single();
-    const { data: userTo } = await supabase.from('users').select('friends').eq('username', username).single();
-    userFrom.friends.push(username);
-    userTo.friends.push(request.from);
-    await supabase.from('users').update({ friends: userFrom.friends }).eq('username', request.from);
-    await supabase.from('users').update({ friends: userTo.friends }).eq('username', username);
+    const { data: userFrom } = await supabase.from('users').select('friends').eq('username', request.from).maybeSingle();
+    const { data: userTo } = await supabase.from('users').select('friends').eq('username', username).maybeSingle();
+    if (userFrom && userTo) {
+      userFrom.friends.push(username);
+      userTo.friends.push(request.from);
+      await supabase.from('users').update({ friends: userFrom.friends }).eq('username', request.from);
+      await supabase.from('users').update({ friends: userTo.friends }).eq('username', username);
+    }
   } else {
     await supabase.from('friend_requests').update({ status: 'rejected' }).eq('requestId', requestId);
   }
@@ -230,7 +207,7 @@ io.on('connection', (socket) => {
   console.log('Подключился:', socket.id);
 
   socket.on('register', async (username) => {
-    const { data: user } = await supabase.from('users').select('*').eq('username', username).single();
+    const { data: user } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
     if (!user) return;
     onlineUsers.set(socket.id, username);
     userSockets.set(username, socket.id);
@@ -259,7 +236,7 @@ io.on('connection', (socket) => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     if (isGroup) {
-      const { data: group } = await supabase.from('groups').select('*').eq('name', target).single();
+      const { data: group } = await supabase.from('groups').select('*').eq('name', target).maybeSingle();
       if (!group) return;
       const msg = { chatKey: 'group:' + target, author: sender, text: text || '', image: image || null, time, target, isGroup: true };
       await supabase.from('messages').insert([msg]);
@@ -287,7 +264,6 @@ io.on('connection', (socket) => {
       await supabase.from('messages').insert([msg]);
       const recvSock = userSockets.get(receiver);
       if (recvSock) io.to(recvSock).emit('private message', msg);
-      // И отправляем себе подтверждение
       socket.emit('private message', msg);
     }
   });
@@ -309,35 +285,40 @@ io.on('connection', (socket) => {
   socket.on('send-friend-request', async (to) => {
     const from = onlineUsers.get(socket.id);
     if (!from) return;
-    const { data: userFrom } = await supabase.from('users').select('friends').eq('username', from).single();
+    const { data: userFrom } = await supabase.from('users').select('friends').eq('username', from).maybeSingle();
+    if (!userFrom) return;
     if (userFrom.friends.includes(to)) return;
     await supabase.from('friend_requests').insert([{ requestId: Date.now().toString(), from, to, status: 'pending' }]);
-    // уведомление через сокет (упростим)
     const toSock = userSockets.get(to);
-    if (toSock) {
-      io.to(toSock).emit('new-notification', { id: Date.now(), text: `${from} хочет добавить вас в друзья`, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), read: false });
-    }
+    if (toSock) io.to(toSock).emit('new-notification', {
+      id: Date.now(),
+      text: `${from} хочет добавить вас в друзья`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      read: false
+    });
   });
 
   socket.on('respond-friend-request', async ({ requestId, action }) => {
     const username = onlineUsers.get(socket.id);
-    const { data: request } = await supabase.from('friend_requests').select('*').eq('requestId', requestId).single();
+    const { data: request } = await supabase.from('friend_requests').select('*').eq('requestId', requestId).maybeSingle();
     if (!request || request.to !== username || request.status !== 'pending') return;
     if (action === 'accept') {
       await supabase.from('friend_requests').update({ status: 'accepted' }).eq('requestId', requestId);
-      const { data: userFrom } = await supabase.from('users').select('friends').eq('username', request.from).single();
-      const { data: userTo } = await supabase.from('users').select('friends').eq('username', username).single();
-      userFrom.friends.push(username);
-      userTo.friends.push(request.from);
-      await supabase.from('users').update({ friends: userFrom.friends }).eq('username', request.from);
-      await supabase.from('users').update({ friends: userTo.friends }).eq('username', username);
+      const { data: userFrom } = await supabase.from('users').select('friends').eq('username', request.from).maybeSingle();
+      const { data: userTo } = await supabase.from('users').select('friends').eq('username', username).maybeSingle();
+      if (userFrom && userTo) {
+        userFrom.friends.push(username);
+        userTo.friends.push(request.from);
+        await supabase.from('users').update({ friends: userFrom.friends }).eq('username', request.from);
+        await supabase.from('users').update({ friends: userTo.friends }).eq('username', username);
+      }
     } else {
       await supabase.from('friend_requests').update({ status: 'rejected' }).eq('requestId', requestId);
     }
     const fromSock = userSockets.get(request.from);
     if (fromSock) {
-      const { data: fromUser } = await supabase.from('users').select('*').eq('username', request.from).single();
-      io.to(fromSock).emit('user-data', { name: request.from, friends: fromUser.friends, groups: fromUser.groups, avatar: fromUser.avatar });
+      const { data: fromUser } = await supabase.from('users').select('*').eq('username', request.from).maybeSingle();
+      if (fromUser) io.to(fromSock).emit('user-data', { name: request.from, friends: fromUser.friends, groups: fromUser.groups, avatar: fromUser.avatar });
     }
     socket.emit('user-data', { name: username, friends: userTo?.friends || [], groups: userTo?.groups || [], avatar: userTo?.avatar || '' });
   });
@@ -351,7 +332,7 @@ io.on('connection', (socket) => {
     const allMembers = [myName, ...members.filter(m => m !== myName)];
     await supabase.from('groups').insert([{ name, members: allMembers }]);
     for (const member of allMembers) {
-      const { data: user } = await supabase.from('users').select('groups').eq('username', member).single();
+      const { data: user } = await supabase.from('users').select('groups').eq('username', member).maybeSingle();
       if (user) {
         const updatedGroups = [...user.groups, name];
         await supabase.from('users').update({ groups: updatedGroups }).eq('username', member);
@@ -360,8 +341,8 @@ io.on('connection', (socket) => {
     for (const member of allMembers) {
       const sockId = userSockets.get(member);
       if (sockId) {
-        const { data: user } = await supabase.from('users').select('*').eq('username', member).single();
-        io.to(sockId).emit('user-data', { name: member, friends: user.friends, groups: user.groups, avatar: user.avatar });
+        const { data: user } = await supabase.from('users').select('*').eq('username', member).maybeSingle();
+        if (user) io.to(sockId).emit('user-data', { name: member, friends: user.friends, groups: user.groups, avatar: user.avatar });
       }
     }
   });
@@ -389,7 +370,7 @@ io.on('connection', (socket) => {
 async function broadcastUsersList() {
   const list = [{ id: 'ai-bot', name: ' AI Друг', isAI: true, avatar: '' }];
   for (let [id, name] of onlineUsers) {
-    const { data: user } = await supabase.from('users').select('*').eq('username', name).single();
+    const { data: user } = await supabase.from('users').select('*').eq('username', name).maybeSingle();
     list.push({ id, name, isAI: false, avatar: user?.avatar || '', description: user?.description || '' });
   }
   io.emit('users-update', list);
