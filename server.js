@@ -17,6 +17,16 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://oafwaofiuczljckmxmko.su
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'ваш_сервисный_ключ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Проверка подключения к Supabase при старте
+(async () => {
+  const { data, error } = await supabase.from('users').select('username').limit(1);
+  if (error) {
+    console.error('❌ Ошибка подключения к Supabase:', error.message);
+  } else {
+    console.log('✅ Подключение к Supabase успешно');
+  }
+})();
+
 // Вспомогательные функции
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
@@ -41,20 +51,32 @@ async function addNotification(username, text) {
   }
 }
 
-// Автоматическое создание тестового аккаунта
+// ГАРАНТИРОВАННОЕ ОБНОВЛЕНИЕ ХЕША ДЛЯ ТЕСТОВОГО АККАУНТА
 async function ensureTestAccount() {
-  const { data } = await supabase.from('users').select('*').eq('username', 'Алексей').single();
-  if (!data) {
-    const hash = bcrypt.hashSync('1234', 8);
-    await supabase.from('users').insert([{
+  const correctHash = bcrypt.hashSync('1234', 8);
+  // Пытаемся обновить, если пользователь уже есть
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ passwordHash: correctHash })
+    .eq('username', 'Алексей');
+
+  if (updateError) {
+    // Возможно, пользователя нет — тогда создаём
+    const { error: insertError } = await supabase.from('users').insert([{
       username: 'Алексей',
-      passwordHash: hash,
+      passwordHash: correctHash,
       friends: [],
       groups: [],
       avatar: '',
       description: 'Тестовый аккаунт'
     }]);
-    console.log('✅ Тестовый аккаунт Алексей / 1234 создан');
+    if (insertError) {
+      console.error('❌ Не удалось создать/обновить тестовый аккаунт:', insertError.message);
+    } else {
+      console.log('✅ Тестовый аккаунт Алексей / 1234 создан');
+    }
+  } else {
+    console.log('✅ Хеш пароля для Алексея обновлён');
   }
 }
 
@@ -68,6 +90,7 @@ app.post('/api/register', async (req, res) => {
   if (existing) return res.status(400).json({ error: 'Пользователь уже существует' });
   const passwordHash = bcrypt.hashSync(password, 8);
   await supabase.from('users').insert([{ username, passwordHash, friends: [], groups: [], avatar: '', description: '' }]);
+  console.log(`✅ Зарегистрирован новый пользователь: ${username}`);
   res.json({ success: true });
 });
 
@@ -75,12 +98,32 @@ app.post('/api/login', async (req, res) => {
   let { username, password } = req.body;
   username = username.trim();
   password = password.trim();
-  if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
-  const { data: user } = await supabase.from('users').select('*').eq('username', username).single();
-  if (!user) return res.status(401).json({ error: 'Неверный ник или пароль' });
-  if (!bcrypt.compareSync(password, user.passwordHash)) return res.status(401).json({ error: 'Неверный ник или пароль' });
+
+  console.log(`🔐 Попытка входа: ${username}`);
+  if (!username || !password) {
+    console.log('❌ Пустые поля');
+    return res.status(400).json({ error: 'Заполните все поля' });
+  }
+
+  const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
+  if (error) {
+    console.error('❌ Ошибка при поиске пользователя:', error.message);
+    return res.status(500).json({ error: 'Ошибка сервера' });
+  }
+  if (!user) {
+    console.log(`❌ Пользователь ${username} не найден`);
+    return res.status(401).json({ error: 'Неверный ник или пароль' });
+  }
+
+  const passwordMatch = bcrypt.compareSync(password, user.passwordHash);
+  if (!passwordMatch) {
+    console.log(`❌ Пароль для ${username} не совпадает`);
+    return res.status(401).json({ error: 'Неверный ник или пароль' });
+  }
+
   const token = generateToken();
   await supabase.from('sessions').insert([{ token, username }]);
+  console.log(`✅ Успешный вход: ${username}`);
   res.json({ token, username });
 });
 
