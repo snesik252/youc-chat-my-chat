@@ -422,6 +422,7 @@
       token = data.token; localStorage.setItem('authToken', token); myName = data.username;
       socket.emit('register', myName);
       showChat();
+      renderFriendRequests(); // загружаем заявки сразу после входа
     } else showError(data.error || 'Ошибка входа после регистрации');
   };
 
@@ -437,6 +438,7 @@
     token = data.token; localStorage.setItem('authToken', token); myName = data.username;
     socket.emit('register', myName);
     showChat();
+    renderFriendRequests(); // загружаем заявки сразу после входа
   };
 
   async function checkSession() {
@@ -451,6 +453,7 @@
       updateNotificationBadge();
       socket.emit('register', myName);
       showChat();
+      renderFriendRequests(); // загружаем заявки при проверке сессии
     } catch(e) { showAuth(); }
   }
 
@@ -787,6 +790,8 @@
     renderChatList();
     if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts();
     if (document.getElementById('groups-panel').classList.contains('active')) renderGroupsPanel();
+    // всегда обновляем заявки при получении данных пользователя
+    renderFriendRequests();
   });
   socket.on('users-update', users => { allUsers = users; if (document.getElementById('contacts-panel').classList.contains('active')) renderContacts(); });
   socket.on('avatar-updated', ({username}) => { if (username === myName) loadMyProfile(); });
